@@ -530,6 +530,7 @@ func getOrCreateModel(name string, options Option) *Model {
 	return model
 }
 
+
 // NewModel creates a new model with the given name.
 func NewModel(name string) *Model {
 	model := getOrCreateModel(name, 0)

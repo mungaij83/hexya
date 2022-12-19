@@ -354,11 +354,11 @@ func fixFieldValue(v interface{}, fi *Field) interface{} {
 // NewModelData returns a pointer to a new instance of ModelData
 // for the given model. If FieldMaps are given they are added to
 // the ModelData.
-func NewModelData(model Modeler, fm ...FieldMap) *ModelData {
+func NewModelData(model *Model, fm ...FieldMap) *ModelData {
 	fMap := make(FieldMap)
 	for _, f := range fm {
 		for k, v := range f {
-			fi := model.Underlying().getRelatedFieldInfo(model.Underlying().FieldName(k))
+			fi := model.Underlying().getRelatedFieldInfo(model.FieldName(k))
 			v = fixFieldValue(v, fi)
 			fMap[fi.json] = v
 		}
@@ -366,7 +366,7 @@ func NewModelData(model Modeler, fm ...FieldMap) *ModelData {
 	return &ModelData{
 		FieldMap: fMap,
 		ToCreate: make(map[string][]*ModelData),
-		Model:    model.Underlying(),
+		Model:    model,
 	}
 }
 

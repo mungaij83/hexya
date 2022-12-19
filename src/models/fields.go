@@ -20,7 +20,6 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/types"
 	"github.com/hexya-erp/hexya/src/tools/nbutils"

@@ -22,12 +22,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"text/template"
 
 	"github.com/hexya-erp/hexya/src/tools/generate"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -72,58 +70,58 @@ func init() {
 }
 
 func runGenerate(projectDir string) {
-	projectDir, poolDir := computeDirs(projectDir)
-	cleanPoolDir(poolDir)
-	if generateEmptyPool {
-		return
-	}
-	var targetPaths []string
-	if testEnabled {
-		targetPaths = []string{projectDir}
-	} else {
-		targetPaths = viper.GetStringSlice("Modules")
-	}
-	replacePoolDirInGoMod(poolDir)
-
-	fmt.Println(`Hexya Generate
-	--------------`)
-	fmt.Println("Modules paths:")
-	fmt.Println(" -", strings.Join(targetPaths, "\n - "))
-
-	fmt.Print(`1/5 - Loading program...`)
-	packs, err := loadProgram(targetPaths, testEnabled)
-	if err != nil {
-		panic(err)
-	}
-	mods := generate.GetModulePackages(packs)
-	fmt.Println("Ok")
-
-	fmt.Print("2/5 - Generating symlinks...")
-	createSymlinks(mods, projectDir)
-	fmt.Println("Ok")
-
-	fmt.Print("3/5 - Generating pool...")
-	generate.CreatePool(mods, poolDir)
-	fmt.Println("Ok")
-
-	fmt.Print("4/5 - Checking the generated code...")
-	_, err = loadProgram(targetPaths, testEnabled)
-	if err != nil {
-		fmt.Println("FAIL")
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	fmt.Println("Ok")
-
-	fmt.Print("5/5 - Creating main.go in project...")
-	if testEnabled {
-		fmt.Println("SKIPPED")
-	} else {
-		createStartFile(projectDir, targetPaths)
-		fmt.Println("Ok")
-	}
-
-	fmt.Println("Pool generated successfully")
+	//projectDir, poolDir := computeDirs(projectDir)
+	//cleanPoolDir(poolDir)
+	//if generateEmptyPool {
+	//	return
+	//}
+	//var targetPaths []string
+	//if testEnabled {
+	//	targetPaths = []string{projectDir}
+	//} else {
+	//	targetPaths = viper.GetStringSlice("Modules")
+	//}
+	//replacePoolDirInGoMod(poolDir)
+	//
+	//fmt.Println(`Hexya Generate
+	//--------------`)
+	//fmt.Println("Modules paths:")
+	//fmt.Println(" -", strings.Join(targetPaths, "\n - "))
+	//
+	//fmt.Print(`1/5 - Loading program...`)
+	//packs, err := loadProgram(targetPaths, testEnabled)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//mods := generate.GetModulePackages(packs)
+	//fmt.Println("Ok")
+	//
+	//fmt.Print("2/5 - Generating symlinks...")
+	//createSymlinks(mods, projectDir)
+	//fmt.Println("Ok")
+	//
+	//fmt.Print("3/5 - Generating pool...")
+	//generate.CreatePool(mods, poolDir)
+	//fmt.Println("Ok")
+	//
+	//fmt.Print("4/5 - Checking the generated code...")
+	//_, err = loadProgram(targetPaths, testEnabled)
+	//if err != nil {
+	//	fmt.Println("FAIL")
+	//	fmt.Println(err)
+	//	os.Exit(1)
+	//}
+	//fmt.Println("Ok")
+	//
+	//fmt.Print("5/5 - Creating main.go in project...")
+	//if testEnabled {
+	//	fmt.Println("SKIPPED")
+	//} else {
+	//	createStartFile(projectDir, targetPaths)
+	//	fmt.Println("Ok")
+	//}
+	//
+	//fmt.Println("Pool generated successfully")
 }
 
 func createStartFile(projectDir string, targetPaths []string) {

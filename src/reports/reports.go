@@ -6,10 +6,10 @@ package reports
 import (
 	"errors"
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models"
 	"sync"
 
 	"github.com/hexya-erp/hexya/src/actions"
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/types"
 )
 

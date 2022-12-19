@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hexya-erp/hexya/src/models"
-	"github.com/hexya-erp/hexya/src/models/loader/generic"
-
 	"github.com/hexya-erp/hexya/src/models/fields"
 	"github.com/hexya-erp/hexya/src/tools/logging"
 	"github.com/hexya-erp/hexya/src/tools/nbutils"
@@ -25,6 +23,9 @@ func init() {
 }
 
 type TagData struct {
+	Many2One  string
+	Many2Many string
+	One2Many  string
 	Value     interface{}
 	JSON      string
 	Required  bool
@@ -33,9 +34,11 @@ type TagData struct {
 	Index     bool
 	Size      int
 	NoCopy    bool
+	goType    string
 	Unique    bool
 	Precision int8
 	Scale     int8
+	Depends   []string
 	Options   map[string]string
 	ReadOnly  bool
 	Stored    bool
@@ -179,8 +182,45 @@ func (ml ModelLoader) GetFieldOptions(name string, data interface{}) map[string]
 	}
 	return map[string]string{}
 }
+
+func (ml ModelLoader) ParseRelatedFields(f reflect.StructField, data TagData) (string, models.FieldDefinition, error) {
+	if len(data.Many2One) > 0 {
+		ff := fields.One2Many{
+			ReverseFK: data.Many2One,
+			Stored:    data.Stored,
+			ReadOnly:  data.Stored,
+			Index:     data.Index,
+		}
+		return f.Name, ff, nil
+	} else if len(data.Many2Many) > 0 {
+		ff := fields.Many2Many{
+			M2MOurField: data.Many2One,
+			Stored:      data.Stored,
+			ReadOnly:    data.Stored,
+			Index:       data.Index,
+		}
+		return f.Name, ff, nil
+	} else if len(data.Many2One) > 0 {
+		ff := fields.Many2One{
+			Related:  data.Many2One,
+			Stored:   data.Stored,
+			ReadOnly: data.Stored,
+			Index:    data.Index,
+		}
+		return f.Name, ff, nil
+	}
+	return f.Name, nil, errors.New(fmt.Sprintf("unknown relation field type: %v", data.Type))
+}
 func (ml ModelLoader) GetFieldDetails(f reflect.StructField, modelData interface{}) (string, models.FieldDefinition, error) {
 	data := ml.GetFieldTags(f)
+	// Parse relationship first
+	fname, rval, err := ml.ParseRelatedFields(f, data)
+	if err == nil && rval != nil {
+		return fname, rval, nil
+	} else {
+		log.Debug("Non relationship field: %v", err)
+	}
+	// Parse other fields
 	switch f.Type.Name() {
 	case "float64", "float32":
 		val := fields.Float{
@@ -193,6 +233,7 @@ func (ml ModelLoader) GetFieldDetails(f reflect.StructField, modelData interface
 			Stored:   data.Stored,
 			ReadOnly: data.ReadOnly,
 			NoCopy:   data.NoCopy,
+			Depends:  data.Depends,
 		}
 		ml.GetFloatField(&val, data)
 		return f.Name, val, nil
@@ -396,7 +437,7 @@ func (ml ModelLoader) GetIntegerTag(f map[string]string, key string) int {
 	return tagValue
 }
 
-// Selection tag should have values: a,b:c,d:e,f; where : is the key-value pair separator
+// GetSelectionTag selection tags should have values: a,b:c,d:e,f; where : is the key-value pair separator
 func (ml ModelLoader) GetSelectionTag(f map[string]string, key string) map[string]string {
 	var tagValue map[string]string
 	value := ml.GetStringTag(f, key, "")
@@ -413,6 +454,15 @@ func (ml ModelLoader) GetSelectionTag(f map[string]string, key string) map[strin
 		}
 	} else {
 		tagValue = nil
+	}
+	return tagValue
+}
+func (ml ModelLoader) GetArrayTag(f map[string]string, key string) []string {
+	var tagValue []string
+	data := ml.GetStringTag(f, key, "")
+	if len(data) > 0 {
+		parts := strings.Split(data, ",")
+		tagValue = append(tagValue, parts...)
 	}
 	return tagValue
 }
@@ -465,21 +515,27 @@ func (ml ModelLoader) GetFieldTags(f reflect.StructField) TagData {
 		vl.Options = ml.GetSelectionTag(tagMap, "options")
 		vl.Unique = ml.GetBooleanTag(tagMap, "unique")
 		vl.Stored = ml.GetBooleanTag(tagMap, "stored")
-		vl.Stored = ml.GetBooleanTag(tagMap, "readOnly")
+		vl.ReadOnly = ml.GetBooleanTag(tagMap, "readOnly")
 		vl.NoCopy = ml.GetBooleanTag(tagMap, "noCopy")
+		vl.Depends = ml.GetArrayTag(tagMap, "depends")
+		vl.goType = ml.GetStringTag(tagMap, "goType", "")
+		// Relationship
+		vl.One2Many = ml.GetStringTag(tagMap, "one2many", "")
+		vl.Many2One = ml.GetStringTag(tagMap, "many2one", "")
+		vl.Many2Many = ml.GetStringTag(tagMap, "many2many", "")
 	}
 	return vl
 }
 
-func NewTypedModel(modelRef interface{}) *models.Model {
+func NewTypedModel(modelRef interface{}) ModelDefinition[any] {
 	model, err := modelLoader.LoadBaseModel(modelRef)
 	if err != nil {
 		log.Error("Failed to load model: %v", err)
 	}
 	model.InheritModel(models.Registry.MustGet("ModelMixin"))
-	return model
+	return NewModelSet[Model](models)
 }
 
-func NewModelSet(modelRef interface{}) generic.ModelDefinition {
-
+func NewModelSet[M Model](modelRef *Model) ModelDefinition[M] {
+	return NewModelSet[M](modelRef)
 }

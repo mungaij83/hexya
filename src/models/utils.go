@@ -111,7 +111,7 @@ func filterOnDBFields(mi *Model, fields []FieldName, dontAddID ...bool) []FieldN
 			continue
 		}
 
-		// Related field (e.g. User.Profile.Age)
+		// Depends field (e.g. User.Profile.Age)
 		if fi.relatedModel == nil {
 			log.Panic("Field is not a relation in model", "field", fieldExprs[0], "model", mi.name)
 		}

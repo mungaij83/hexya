@@ -99,7 +99,7 @@ func CreateFieldFromStruct(fc *FieldsCollection, fStruct interface{}, name strin
 		compute:         compute,
 		inverse:         inverse,
 		depends:         val.FieldByName("Depends").Interface().([]string),
-		relatedPathStr:  val.FieldByName("Related").String(),
+		relatedPathStr:  val.FieldByName("Depends").String(),
 		noCopy:          noCopy,
 		structField:     structField,
 		fieldType:       fieldType,
@@ -281,7 +281,7 @@ func (f *Field) SetGroupOperator(value string) *Field {
 	return f
 }
 
-// SetRelated overrides the value of the Related parameter of this Field
+// SetRelated overrides the value of the Depends parameter of this Field
 func (f *Field) SetRelated(value string) *Field {
 	f.addUpdate("relatedPathStr", value)
 	return f

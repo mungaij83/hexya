@@ -35,8 +35,8 @@ func (md ModelMixinModel) NewData(fm ...models.FieldMap) models.RecordSet {
 }
 
 // Fields returns the Field Collection of the ModelMixin Model
-func (md ModelMixinModel) Fields() models.FieldsCollection {
-	return models.FieldsCollection{
+func (md ModelMixinModel) Fields() FieldsCollection {
+	return FieldsCollection{
 		FieldsCollection: md.Model.Fields(),
 	}
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 )
@@ -225,6 +226,65 @@ func (md *ModelData) Scan(src interface{}) error {
 func (md *ModelData) Get(field FieldName) interface{} {
 	res, _ := md.FieldMap.Get(field)
 	return res
+}
+
+// The field can be either its name or is JSON name.
+func (md *ModelData) GetField(field string) interface{} {
+	res, _ := md.FieldMap.Get(NewFieldName(field, ""))
+	return res
+}
+
+func (md *ModelData) GetJsonField(field string) interface{} {
+	res, _ := md.FieldMap.Get(NewFieldName("", field))
+	return res
+}
+
+func (md *ModelData) GetDateTime(field string) *time.Time {
+	res, ok := md.FieldMap.Get(NewFieldName(field, ""))
+	if ok {
+		return nil
+	}
+	v, ok := res.(time.Time)
+	if ok {
+		return &v
+	}
+	return nil
+}
+
+//func (md *ModelData) GetData[M any](field string) M {
+//	res := md.GetField(field)
+//	if res == nil {
+//		return nil
+//	}
+//	v, ok := res.(M)
+//	if ok {
+//		return v
+//	}
+//	return nil
+//}
+
+func (md *ModelData) GetInt64(field string) int64 {
+	res := md.GetField(field)
+	if res == nil {
+		return 0
+	}
+	v, ok := res.(int64)
+	if ok {
+		return v
+	}
+	return 0
+}
+
+func (md *ModelData) GetString(field string) string {
+	res := md.GetField(field)
+	if res == nil {
+		return ""
+	}
+	v, ok := res.(string)
+	if ok {
+		return v
+	}
+	return ""
 }
 
 // Has returns true if this ModelData has values for the given field.

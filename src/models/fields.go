@@ -55,7 +55,7 @@ const (
 // (e.g. path = "Profile.BestPost").
 // - stored is true if the computed field is stored
 type computeData struct {
-	model     *Model[any]
+	model     *Repository[any, int64]
 	stored    bool
 	fieldName string
 	compute   string
@@ -65,7 +65,7 @@ type computeData struct {
 // FieldsCollection is a collection of Field instances in a model.
 type FieldsCollection struct {
 	sync.RWMutex
-	model                *Model[any]
+	model                Repository[any, int64]
 	registryByName       map[string]*Field
 	registryByJSON       map[string]*Field
 	computedFields       []*Field
@@ -89,7 +89,7 @@ func (fc *FieldsCollection) Get(name string) (fi *Field, ok bool) {
 func (fc *FieldsCollection) MustGet(name string) *Field {
 	fi, ok := fc.Get(name)
 	if !ok {
-		log.Panic("Unknown field in model", "model", fc.model.name, "field", name)
+		log.Panic("Unknown field in model", "model", fc.model.TableName(), "field", name)
 	}
 	return fi
 }
@@ -111,7 +111,7 @@ func (fc *FieldsCollection) storedFieldNames(fieldNames ...FieldName) []FieldNam
 			}
 		}
 		if (fi.isStored() || fi.isRelatedField()) && keepField {
-			res = append(res, fc.model.FieldName(fName))
+			res = append(res, fc.model.GetFieldName(fName))
 		}
 	}
 	return res
@@ -122,7 +122,7 @@ func (fc *FieldsCollection) allFieldNames() FieldNames {
 	res := make([]FieldName, len(fc.registryByJSON))
 	var i int
 	for f := range fc.registryByName {
-		res[i] = fc.model.FieldName(f)
+		res[i] = fc.model.GetFieldName(f)
 		i++
 	}
 	return res
@@ -149,7 +149,7 @@ func (fc *FieldsCollection) getComputedFields(fields ...string) (fil []*Field) {
 }
 
 // Model returns this FieldsCollection Model
-func (fc *FieldsCollection) Model() *Model[any] {
+func (fc *FieldsCollection) Model() Repository[any, int64] {
 	return fc.model
 }
 
@@ -165,7 +165,7 @@ func newFieldsCollection() *FieldsCollection {
 // add the given Field to the FieldsCollection.
 func (fc *FieldsCollection) add(fInfo *Field) {
 	if _, exists := fc.registryByName[fInfo.name]; exists {
-		log.Panic("Trying to add already existing field", "model", fInfo.model.name, "field", fInfo.name)
+		log.Panic("Trying to add already existing field", "model", fInfo.model, "field", fInfo.name)
 	}
 	fc.register(fInfo)
 }
@@ -194,7 +194,7 @@ func (fc *FieldsCollection) register(fInfo *Field) {
 
 // Field holds the meta information about a field
 type Field struct {
-	model            *Model[any]
+	model            Repository[any, int64]
 	name             string
 	json             string
 	description      string
@@ -210,10 +210,10 @@ type Field struct {
 	compute          string
 	depends          []string
 	relatedModelName string
-	relatedModel     *Model[any]
+	relatedModel     Repository[any, int64]
 	reverseFK        string
 	jsonReverseFK    string
-	m2mRelModel      *Model[any]
+	m2mRelModel      Repository[any, int64]
 	m2mOurField      *Field
 	m2mTheirField    *Field
 	selection        types.Selection
@@ -286,9 +286,9 @@ func (f *Field) isReadOnly() bool {
 		return true
 	}
 	fInfo := f
-	if fInfo.isRelatedField() {
-		fInfo = f.model.getRelatedFieldInfo(fInfo.relatedPath)
-	}
+	//if fInfo.isRelatedField() {
+	//	fInfo = f.model.getRelatedFieldInfo(fInfo.relatedPath)
+	//}
 	if fInfo.compute != "" && fInfo.inverse == "" {
 		return true
 	}
@@ -320,22 +320,22 @@ var _ FieldName = new(Field)
 func checkFieldInfo(fi *Field) {
 	if fi.fieldType.IsReverseRelationType() && fi.reverseFK == "" {
 		log.Panic("'one2many' and 'rev2one' fields must define a 'ReverseFK' parameter", "model",
-			fi.model.name, "field", fi.name, "type", fi.fieldType)
+			fi.model.TableName(), "field", fi.name, "type", fi.fieldType)
 	}
 
 	if fi.embed && !fi.fieldType.IsFKRelationType() {
-		log.Warn("'Embed' should be set only on many2one or one2one fields", "model", fi.model.name, "field", fi.name,
+		log.Warn("'Embed' should be set only on many2one or one2one fields", "model", fi.model.TableName(), "field", fi.name,
 			"type", fi.fieldType)
 		fi.embed = false
 	}
 
-	if fi.structField.Type == reflect.TypeOf(RecordCollection{}) && fi.relatedModel.name == "" {
-		log.Panic("Undefined relation model on related field", "model", fi.model.name, "field", fi.name,
+	if fi.structField.Type == reflect.TypeOf(RecordCollection{}) && fi.relatedModel.TableName() == "" {
+		log.Panic("Undefined relation model on related field", "model", fi.model.TableName(), "field", fi.name,
 			"type", fi.fieldType)
 	}
 
 	if fi.stored && !fi.isComputedField() {
-		log.Warn("'stored' should be set only on computed fields", "model", fi.model.name, "field", fi.name,
+		log.Warn("'stored' should be set only on computed fields", "model", fi.model.TableName(), "field", fi.name,
 			"type", fi.fieldType)
 		fi.stored = false
 	}

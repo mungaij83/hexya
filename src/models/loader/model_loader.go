@@ -532,7 +532,6 @@ func NewTypedModel[M any](modelRef interface{}) ModelDefinition[M] {
 	if err != nil {
 		log.Error("Failed to load model: %v", err)
 	}
-	model.InheritModel(models.Registry.MustGet("ModelMixin"))
 	return ModelDefinition[M]{model}
 }
 

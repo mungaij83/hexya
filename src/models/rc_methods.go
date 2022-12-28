@@ -36,13 +36,13 @@ func (rc *RecordCollection) Call(methName string, args ...interface{}) interface
 // CallMulti calls the given method name methName on the given RecordCollection
 // with the given arguments and return the result as []interface{}.
 func (rc *RecordCollection) CallMulti(methName string, args ...interface{}) []interface{} {
-	log.Debug("Calling Recordset method", "model", rc.model.name, "method", methName, "ids", rc.ids, "args", strutils.TrimArgs(args))
+	log.Debug("Calling Recordset method", "model", rc.model.TableName(), "method", methName, "ids", rc.ids, "args", strutils.TrimArgs(args))
 	if !rc.IsValid() {
-		panic(fmt.Errorf("you cannot call a method on an invalid RecordSet. Model: %s, Method: %s", rc.model.name, methName))
+		panic(fmt.Errorf("you cannot call a method on an invalid RecordSet. Model: %s, Method: %s", rc.model.TableName(), methName))
 	}
 	rc.env.checkRecursion()
 	startTime := time.Now()
-	methInfo, ok := rc.model.methods.Get(methName)
+	methInfo, ok := rc.model.Methods().Get(methName)
 	if !ok {
 		log.Panic("Unknown method in model", "method", methName, "model", rc.model.name)
 	}
@@ -51,7 +51,7 @@ func (rc *RecordCollection) CallMulti(methName string, args ...interface{}) []in
 	if rc.env.super {
 		methLayer = methInfo.getNextLayer(rc.env.currentLayer)
 		if methLayer == nil {
-			log.Panic("Missing layer", "method", methName, "model", rc.model.name)
+			log.Panic("Missing layer", "method", methName, "model", rc.model.TableName())
 		}
 	}
 
@@ -85,11 +85,11 @@ func (rc *RecordCollection) CallMulti(methName string, args ...interface{}) []in
 // This method is meant to be used inside a method layer function to call its parent,
 // such as:
 //
-//    func (rs models.RecordCollection) MyMethod() string {
-//        res := rs.Super().MyMethod()
-//        res += " ok!"
-//        return res
-//    }
+//	func (rs models.RecordCollection) MyMethod() string {
+//	    res := rs.Super().MyMethod()
+//	    res += " ok!"
+//	    return res
+//	}
 //
 // Calls to a different method than the current method will call its next layer only
 // if the current method has been called from a layer of the other method. Otherwise,
@@ -102,9 +102,9 @@ func (rc *RecordCollection) Super() *RecordCollection {
 
 // MethodType returns the type of the method given by methName
 func (rc *RecordCollection) MethodType(methName string) reflect.Type {
-	methInfo, ok := rc.model.methods.Get(methName)
+	methInfo, ok := rc.model.Methods().Get(methName)
 	if !ok {
-		log.Panic("Unknown method in model", "model", rc.model.name, "method", methName)
+		log.Panic("Unknown method in model", "model", rc.model.TableName(), "method", methName)
 	}
 	return methInfo.methodType
 }

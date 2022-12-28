@@ -40,8 +40,4 @@ func init() {
 	Views = make(map[*Model][]string)
 	recordSetWrappers = make(map[string]reflect.Type)
 	modelDataWrappers = make(map[string]reflect.Type)
-	// declare base and common mixins
-	declareCommonMixin()
-	declareBaseMixin()
-	declareModelMixin()
 }

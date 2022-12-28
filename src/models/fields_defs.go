@@ -154,7 +154,7 @@ func getFuncNames(compute, inverse, onchange, onchangeWarning, onchangeFilters, 
 // addUpdate adds an update entry for for this field with the given property and the given value
 func (f *Field) addUpdate(property string, value interface{}) {
 	if Registry.bootstrapped {
-		log.Panic("Fields must not be modified after bootstrap", "model", f.model.name, "field", f.name, "property", property, "value", value)
+		log.Panic("Fields must not be modified after bootstrap", "model", f.model.TableName(), "field", f.name, "property", property, "value", value)
 	}
 	update := map[string]interface{}{property: value}
 	f.updates = append(f.updates, update)
@@ -223,9 +223,9 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "filter":
 		f.filter = value.(*Condition)
 	case "relationModel":
-		f.relatedModelName = value.(*Model[any]).Name()
+		f.relatedModelName = value.(Repository[any, int64]).TableName()
 	case "m2mRelModel":
-		f.m2mRelModel = value.(*Model[any])
+		f.m2mRelModel = value.(Repository[any, int64])
 	case "m2mOurField":
 		f.m2mOurField = value.(*Field)
 	case "m2mTheirField":

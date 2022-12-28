@@ -18,6 +18,7 @@ type PrimaryKeys interface {
 // Repository Type of repository to represent any query link between
 type Repository[T any, K PrimaryKeys] interface {
 	Save(v T) (*T, error)
+	Search(cond Condition) ([]T, error)
 	TableName() string
 	Delete(v T) (*T, error)
 	validateAndInitialize(modelLoader *loader.ModelLoader) error
@@ -26,6 +27,10 @@ type Repository[T any, K PrimaryKeys] interface {
 	FindByIdWithOptions(id K, options RecordOptions) (*T, error)
 	FindByIds(id []K) ([]T, error)
 	FindByIdsWithOptions(id []K, option RecordOptions) ([]T, error)
+	Methods() *MethodsCollection
+	Fields() *FieldsCollection
+	GetFieldName(s string) FieldName
+	Roles()
 	IsMixin() bool
 	IsManual() bool
 	isSystem() bool
@@ -42,7 +47,6 @@ type ModelRepository[T any, K PrimaryKeys] struct {
 	tableName string
 	fields    *FieldsCollection
 	methods   *MethodsCollection
-	model     *Model[T]
 }
 
 func (mr *ModelRepository[T, K]) validateAndInitialize(loader *loader.ModelLoader) error {
@@ -80,9 +84,34 @@ func (mr *ModelRepository[T, K]) Save(v T) (*T, error) {
 	}
 	return &v, nil
 }
-func (mr *ModelRepository[T, K]) TableName() string {
-
+func (mr *ModelRepository[T, K]) Search(cond Condition) ([]T, error) {
+	var vv []T
+	err := mr.env.cr.tx.Find(&vv).Error
+	if err != nil {
+		return nil, err
+	}
+	return vv, nil
 }
+func (mr *ModelRepository[T, K]) TableName() string {
+	return mr.tableName
+}
+
+func (mr *ModelRepository[T, K]) Methods() *MethodsCollection {
+	return mr.methods
+}
+
+func (mr *ModelRepository[T, K]) Fields() *FieldsCollection {
+	return mr.fields
+}
+
+func (mr *ModelRepository[T, K]) GetFieldName(s string) FieldName {
+	dd, ok := mr.fields.Get(s)
+	if !ok {
+		return nil
+	}
+	return NewFieldName(dd.name, dd.json)
+}
+
 func (mr *ModelRepository[T, K]) Delete(v T) (*T, error) {
 	err := mr.env.cr.tx.Delete(&v).Error
 	if err != nil {

@@ -10,8 +10,8 @@ require (
 	github.com/gin-contrib/pprof v1.2.1
 	github.com/gin-contrib/sessions v0.0.1
 	github.com/gin-gonic/gin v1.4.0
-	github.com/google/uuid v1.1.1
 	github.com/hexya-erp/pool v1.0.2
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.2
 	github.com/smartystreets/goconvey v0.0.0-20190306220146-200a235640ff
 	github.com/spf13/cobra v0.0.5

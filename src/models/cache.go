@@ -49,7 +49,7 @@ func (nepe nonExistentPathError) Error() string {
 
 // updateEntry creates or updates an entry in the cache defined by its model, id and fieldName.
 // fieldName can be a path
-func (c *cache) updateEntry(mi *Model, id int64, fieldName string, value interface{}, ctxSlug string) error {
+func (c *cache) updateEntry(mi *Model[any], id int64, fieldName string, value interface{}, ctxSlug string) error {
 	if id == 0 {
 		return errors.New("skipped entry with id = 0")
 	}
@@ -63,7 +63,7 @@ func (c *cache) updateEntry(mi *Model, id int64, fieldName string, value interfa
 
 // updateEntryByRef creates or updates an entry to the cache from a cacheRef
 // and a field json name (no path).
-func (c *cache) updateEntryByRef(mi *Model, id int64, jsonName string, value interface{}, ctxSlug string) {
+func (c *cache) updateEntryByRef(mi *Model[any], id int64, jsonName string, value interface{}, ctxSlug string) {
 	fi := mi.fields.MustGet(jsonName)
 	switch fi.fieldType {
 	case fieldtype.One2Many:
@@ -228,7 +228,7 @@ func (c *cache) getM2MLinks(fi *Field, id int64) []int64 {
 
 // addRecord successively adds each entry of the given FieldMap to the cache.
 // fMap keys may be a paths relative to this Model (e.g. "User.Profile.Age").
-func (c *cache) addRecord(mi *Model, id int64, fMap FieldMap, ctxSlug string) {
+func (c *cache) addRecord(mi *Model[any], id int64, fMap FieldMap, ctxSlug string) {
 	paths := make(map[int][]string)
 	var maxLen int
 	// We create our exprsMap with the length of the path as key
@@ -252,7 +252,7 @@ func (c *cache) addRecord(mi *Model, id int64, fMap FieldMap, ctxSlug string) {
 // WARNING: Reload the record as soon as possible after calling
 // this method, since this will bring discrepancies in the other
 // records references (One2Many and Many2Many fields).
-func (c *cache) invalidateRecord(mi *Model, id int64) {
+func (c *cache) invalidateRecord(mi *Model[any], id int64) {
 	c.deleteData(mi.name, id)
 	for _, fi := range mi.fields.registryByJSON {
 		if fi.fieldType == fieldtype.Many2Many {
@@ -262,7 +262,7 @@ func (c *cache) invalidateRecord(mi *Model, id int64) {
 }
 
 // removeEntry removes the given entry from cache
-func (c *cache) removeEntry(mi *Model, id int64, fieldName, ctxSlug string) {
+func (c *cache) removeEntry(mi *Model[any], id int64, fieldName, ctxSlug string) {
 	if !c.checkIfInCache(mi, []int64{id}, []string{fieldName}, ctxSlug, true) {
 		return
 	}
@@ -278,7 +278,7 @@ func (c *cache) removeEntry(mi *Model, id int64, fieldName, ctxSlug string) {
 // relative to this Model (e.g. "User.Profile.Age").
 //
 // If the requested value cannot be found, get returns nil
-func (c *cache) get(mi *Model, id int64, fieldName string, ctxSlug string) interface{} {
+func (c *cache) get(mi *Model[any], id int64, fieldName string, ctxSlug string) interface{} {
 	mi, id, fName, err := c.getRelatedRef(mi, id, fieldName, ctxSlug)
 	if err != nil {
 		return nil
@@ -317,7 +317,7 @@ func (c *cache) get(mi *Model, id int64, fieldName string, ctxSlug string) inter
 
 // checkIfInCache returns true if all fields given by fieldNames are available
 // in cache for all the records with the given ids in the given model.
-func (c *cache) checkIfInCache(mi *Model, ids []int64, fieldNames []string, ctxSlug string, strict bool) bool {
+func (c *cache) checkIfInCache(mi *Model[any], ids []int64, fieldNames []string, ctxSlug string, strict bool) bool {
 	if len(ids) == 0 {
 		return false
 	}
@@ -333,7 +333,7 @@ func (c *cache) checkIfInCache(mi *Model, ids []int64, fieldNames []string, ctxS
 
 // isInCache returns true if the related record through path and ctxSlug strictly exists
 // (i.e. no default value for context)
-func (c *cache) isInCache(mi *Model, id int64, path string, ctxSlug string, strict bool) bool {
+func (c *cache) isInCache(mi *Model[any], id int64, path string, ctxSlug string, strict bool) bool {
 	mi, id, path, err := c.getRelatedRefCommon(mi, id, path, ctxSlug, strict)
 	if err != nil {
 		switch err.(type) {
@@ -352,7 +352,7 @@ func (c *cache) isInCache(mi *Model, id int64, path string, ctxSlug string, stri
 
 // getRelatedRef returns the cacheRef and field name of the field that is
 // defined by path when walking from the given model with the given ID.
-func (c *cache) getRelatedRef(mi *Model, id int64, path string, ctxSlug string) (*Model, int64, string, error) {
+func (c *cache) getRelatedRef(mi *Model[any], id int64, path string, ctxSlug string) (*Model[any], int64, string, error) {
 	return c.getRelatedRefCommon(mi, id, path, ctxSlug, false)
 }
 
@@ -360,12 +360,12 @@ func (c *cache) getRelatedRef(mi *Model, id int64, path string, ctxSlug string) 
 // defined by path when walking from the given model with the given ID.
 //
 // This method returns an error when the value for the given ctxSlug cannot be found.
-func (c *cache) getStrictRelatedRef(mi *Model, id int64, path string, ctxSlug string) (*Model, int64, string, error) {
+func (c *cache) getStrictRelatedRef(mi *Model[any], id int64, path string, ctxSlug string) (*Model[any], int64, string, error) {
 	return c.getRelatedRefCommon(mi, id, path, ctxSlug, true)
 }
 
 // getRelatedRefCommon is the common implementation of getRelatedRef and getStrictRelatedRef.
-func (c *cache) getRelatedRefCommon(mi *Model, id int64, path string, ctxSlug string, strict bool) (*Model, int64, string, error) {
+func (c *cache) getRelatedRefCommon(mi *Model[any], id int64, path string, ctxSlug string, strict bool) (*Model[any], int64, string, error) {
 	if id == 0 {
 		return nil, 0, "", errors.New("requested value on RecordSet with ID=0")
 	}

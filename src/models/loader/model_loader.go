@@ -527,13 +527,13 @@ func (ml ModelLoader) GetFieldTags(f reflect.StructField) TagData {
 	return vl
 }
 
-func NewTypedModel(modelRef interface{}) ModelDefinition[any] {
+func NewTypedModel[M any](modelRef interface{}) ModelDefinition[M] {
 	model, err := modelLoader.LoadBaseModel(modelRef)
 	if err != nil {
 		log.Error("Failed to load model: %v", err)
 	}
 	model.InheritModel(models.Registry.MustGet("ModelMixin"))
-	return NewModelSet[Model](models)
+	return ModelDefinition[M]{model}
 }
 
 func NewModelSet[M Model](modelRef *Model) ModelDefinition[M] {

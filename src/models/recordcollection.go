@@ -16,6 +16,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"reflect"
 	"sort"
 	"strconv"
@@ -25,13 +26,12 @@ import (
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"github.com/hexya-erp/hexya/src/models/types/dates"
-	"github.com/jmoiron/sqlx"
 )
 
 // RecordCollection is a generic struct representing several
 // records of a model.
 type RecordCollection struct {
-	model      *Model
+	model      Repository[any, int64]
 	query      *Query
 	env        *Environment
 	prefetchRC *RecordCollection
@@ -98,7 +98,7 @@ func (rc *RecordCollection) String() string {
 		idsStr[i] = strconv.Itoa(int(id))
 	}
 	rsIds := strings.Join(idsStr, ",")
-	return fmt.Sprintf("%s(%s)", rc.model.name, rsIds)
+	return fmt.Sprintf("%s(%s)", rc.model.TableName(), rsIds)
 }
 
 // Env returns the RecordSet's Environment
@@ -109,7 +109,7 @@ func (rc *RecordCollection) Env() Environment {
 
 // ModelName returns the model name of the RecordSet
 func (rc *RecordCollection) ModelName() string {
-	return rc.model.name
+	return rc.model.TableName()
 }
 
 // Ids returns the ids of the RecordSet, fetching from db if necessary.
@@ -153,7 +153,7 @@ func (rc *RecordCollection) create(data RecordData) *RecordCollection {
 			panic(rc.substituteSQLErrorMessage(r))
 		}
 	}()
-	rc.CheckExecutionPermission(rc.model.methods.MustGet("Create"))
+	rc.CheckExecutionPermission(rc.model.Methods().MustGet("Create"))
 	// process create data for FK relations if any
 	data = rc.createFKRelationRecords(data)
 
@@ -654,7 +654,7 @@ func (rc *RecordCollection) substituteSQLErrorMessage(r interface{}) interface{}
 	}
 	for constraintName, constraint := range rc.model.sqlConstraints {
 		if strings.Contains(err.Error(), constraintName) {
-			res := adapters[db.DriverName()].substituteErrorMessage(err, constraint.errorString)
+			res := adapters[connParams.Driver].substituteErrorMessage(err, constraint.errorString)
 			return res
 		}
 	}
@@ -827,10 +827,10 @@ func (rc *RecordCollection) ForceLoad(fieldNames ...FieldName) *RecordCollection
 	rSet = rSet.substituteRelatedInQuery()
 	dbFields := filterOnDBFields(rSet.model, subFields)
 	query, args, substs := rSet.query.selectQuery(dbFields)
-	rows := dbQuery(rSet.env.cr.tx, query, args...)
+	rows, cnt := dbQuery(rSet.env.cr.tx, query, args...)
 	defer rows.Close()
 	var ids []int64
-	for rows.Next() {
+	for _, line := range rows {
 		line := make(FieldMap)
 		err := rSet.model.scanToFieldMap(rows, &line, substs)
 		if err != nil {
@@ -908,6 +908,9 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 			}
 		}
 	}
+}
+func (rc *RecordCollection) GetField(field string) interface{} {
+	return rc.Get(NewFieldName(field, field))
 }
 
 // Get returns the value of the given fieldName for the first record of this RecordCollection.
@@ -1274,7 +1277,7 @@ func (rc *RecordCollection) withIds(ids []int64) *RecordCollection {
 // the 'lang' key of rc.Env().Context(). If for any reason the
 // string cannot be translated, then src is returned.
 //
-// You MUST pass a string literal as src to have it extracted automatically
+// # You MUST pass a string literal as src to have it extracted automatically
 //
 // The translated string will be passed to fmt.Sprintf with the optional args
 // before being returned.

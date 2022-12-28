@@ -16,9 +16,9 @@ package models
 
 import (
 	"fmt"
-
 	"github.com/hexya-erp/hexya/src/models/types"
 	"github.com/hexya-erp/hexya/src/tools/logging"
+	"gorm.io/gorm"
 )
 
 // DBSerializationMaxRetries defines the number of time a
@@ -38,23 +38,27 @@ const maxRecursionDepth uint8 = 100
 type Environment struct {
 	cr             *Cursor
 	uid            int64
+	driverName     string
 	context        *types.Context
 	cache          *cache
 	super          bool
-	currentLayer   *methodLayer
-	previousMethod *Method
 	recursions     uint8
 	nextNegativeID int64
 }
 
 // Cr returns a pointer to the Cursor of the Environment
-func (env Environment) Cr() *Cursor {
-	return env.cr
+func (env Environment) Cr() *gorm.DB {
+	return env.cr.tx
 }
 
 // Uid returns the user id of the Environment
 func (env Environment) Uid() int64 {
 	return env.uid
+}
+
+// DriverName returns the user database driver name Environment
+func (env Environment) DriverName() string {
+	return env.driverName
 }
 
 // Context returns the Context of the Environment
@@ -67,8 +71,8 @@ func (env Environment) Context() *types.Context {
 // WARNING: Do NOT call Commit on Environment instances that you
 // did not create yourself with NewEnvironment. The framework will
 // automatically commit the Environment.
-func (env Environment) commit() {
-	env.Cr().tx.Commit()
+func (env Environment) commit() error {
+	return env.Cr().Commit().Error
 }
 
 // rollback the transaction of this environment.
@@ -76,8 +80,8 @@ func (env Environment) commit() {
 // WARNING: Do NOT call Rollback on Environment instances that you
 // did not create yourself with NewEnvironment. Just panic instead
 // for the framework to roll back automatically for you.
-func (env Environment) rollback() {
-	env.Cr().tx.Rollback()
+func (env Environment) rollback() error {
+	return env.Cr().Rollback().Error
 }
 
 // checkRecursion panics if the recursion depth limit is reached
@@ -122,10 +126,11 @@ func (env Environment) DumpCache() string {
 // the database connection.
 func newEnvironment(uid int64) Environment {
 	env := Environment{
-		cr:      newCursor(db),
-		uid:     uid,
-		context: types.NewContext(),
-		cache:   newCache(),
+		cr:         newCursor(db),
+		uid:        uid,
+		driverName: connParams.DBName,
+		context:    types.NewContext(),
+		cache:      newCache(),
 	}
 	return env
 }
@@ -146,7 +151,7 @@ func doExecuteInNewEnvironment(uid int64, retries uint8, fnct func(Environment))
 	defer func() {
 		if r := recover(); r != nil {
 			env.rollback()
-			if err, ok := r.(error); ok && adapters[db.DriverName()].isSerializationError(err) {
+			if err, ok := r.(error); ok && adapters[env.driverName].isSerializationError(err) {
 				// Transaction error
 				retries++
 				if retries < DBSerializationMaxRetries {
@@ -179,7 +184,7 @@ func doSimulateInNewEnvironment(uid int64, retries uint8, fnct func(Environment)
 	defer func() {
 		env.rollback()
 		if r := recover(); r != nil {
-			if err, ok := r.(error); ok && adapters[db.DriverName()].isSerializationError(err) {
+			if err, ok := r.(error); ok && adapters[env.DriverName()].isSerializationError(err) {
 				// Transaction error. We try again even if we rollback anyway
 				// to be as close as ExecuteInNewEnvironment as possible
 				retries++

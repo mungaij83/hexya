@@ -16,7 +16,6 @@ package models
 
 import (
 	"fmt"
-
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/operator"
 	"github.com/hexya-erp/hexya/src/tools/nbutils"
@@ -112,7 +111,7 @@ func (d *postgresAdapter) columnSQLDefinition(fi *Field, null bool) string {
 	typ, ok := pgTypes[fi.fieldType]
 	res = typ
 	if !ok {
-		log.Panic("Unknown column type", "type", fi.fieldType, "model", fi.model.name, "field", fi.name)
+		log.Panic("Unknown column type", "type", fi.fieldType, "model", fi.model, "field", fi.name)
 	}
 	switch fi.fieldType {
 	case fieldtype.Char:

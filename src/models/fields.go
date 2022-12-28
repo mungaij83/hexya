@@ -17,13 +17,12 @@ package models
 import (
 	"errors"
 	"fmt"
-	"reflect"
-	"strings"
-	"sync"
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/types"
 	"github.com/hexya-erp/hexya/src/tools/nbutils"
 	"github.com/hexya-erp/hexya/src/tools/strutils"
+	"reflect"
+	"sync"
 )
 
 // An OnDeleteAction defines what to be done with this record when
@@ -56,7 +55,7 @@ const (
 // (e.g. path = "Profile.BestPost").
 // - stored is true if the computed field is stored
 type computeData struct {
-	model     *Model
+	model     *Model[any]
 	stored    bool
 	fieldName string
 	compute   string
@@ -66,7 +65,7 @@ type computeData struct {
 // FieldsCollection is a collection of Field instances in a model.
 type FieldsCollection struct {
 	sync.RWMutex
-	model                *Model
+	model                *Model[any]
 	registryByName       map[string]*Field
 	registryByJSON       map[string]*Field
 	computedFields       []*Field
@@ -150,7 +149,7 @@ func (fc *FieldsCollection) getComputedFields(fields ...string) (fil []*Field) {
 }
 
 // Model returns this FieldsCollection Model
-func (fc *FieldsCollection) Model() *Model {
+func (fc *FieldsCollection) Model() *Model[any] {
 	return fc.model
 }
 
@@ -195,7 +194,7 @@ func (fc *FieldsCollection) register(fInfo *Field) {
 
 // Field holds the meta information about a field
 type Field struct {
-	model            *Model
+	model            *Model[any]
 	name             string
 	json             string
 	description      string
@@ -211,10 +210,10 @@ type Field struct {
 	compute          string
 	depends          []string
 	relatedModelName string
-	relatedModel     *Model
+	relatedModel     *Model[any]
 	reverseFK        string
 	jsonReverseFK    string
-	m2mRelModel      *Model
+	m2mRelModel      *Model[any]
 	m2mOurField      *Field
 	m2mTheirField    *Field
 	selection        types.Selection
@@ -352,245 +351,6 @@ func SnakeCaseFieldName(fName string, typ fieldtype.Type) string {
 		res += "_ids"
 	}
 	return res
-}
-
-// CreateM2MRelModelInfo creates a Model relModelName (if it does not exist)
-// for the m2m relation defined between model1 and model2.
-// It returns the Model of the intermediate model, the Field of that model
-// pointing to our model, and the Field pointing to the other model.
-//
-// If mixin is true, the created M2M model is created as a mixin model.
-func CreateM2MRelModelInfo(relModelName, model1, model2, field1, field2 string, mixin bool) (*Model, *Field, *Field) {
-	if relMI, exists := Registry.Get(relModelName); exists {
-		var m1, m2 *Field
-		for fName, fi := range relMI.fields.registryByName {
-			if fName == field1 {
-				m1 = fi
-			} else if fName == field2 {
-				m2 = fi
-			}
-		}
-		return relMI, m1, m2
-	}
-
-	newMI := &Model{
-		name:            relModelName,
-		tableName:       strutils.SnakeCase(relModelName),
-		fields:          newFieldsCollection(),
-		methods:         newMethodsCollection(),
-		options:         Many2ManyLinkModel | SystemModel,
-		sqlErrors:       make(map[string]string),
-		defaultOrderStr: []string{"ID"},
-	}
-	if mixin {
-		newMI.options |= MixinModel
-	}
-	ourField := &Field{
-		name:             field1,
-		json:             strutils.SnakeCase(field1) + "_id",
-		model:            newMI,
-		required:         true,
-		noCopy:           true,
-		fieldType:        fieldtype.Many2One,
-		relatedModelName: model1,
-		index:            true,
-		onDelete:         Cascade,
-		structField: reflect.StructField{
-			Name: field1,
-			Type: reflect.TypeOf(int64(0)),
-		},
-	}
-	newMI.fields.add(ourField)
-
-	theirField := &Field{
-		name:             field2,
-		json:             strutils.SnakeCase(field2) + "_id",
-		model:            newMI,
-		required:         true,
-		noCopy:           true,
-		fieldType:        fieldtype.Many2One,
-		relatedModelName: model2,
-		index:            true,
-		onDelete:         Cascade,
-		structField: reflect.StructField{
-			Name: field2,
-			Type: reflect.TypeOf(int64(0)),
-		},
-	}
-	newMI.fields.add(theirField)
-	Registry.add(newMI)
-	return newMI, ourField, theirField
-}
-
-// createContextsModel creates a new contexts model for holding field values that depends on contexts
-func createContextsModel(fi *Field, contexts FieldContexts) *Model {
-	if !fi.isStored() {
-		log.Panic("You cannot add contexts to non stored fields", "model", fi.model.name, "field", fi.name)
-	}
-	name := fmt.Sprintf("%sHexya%s", fi.model.name, fi.name)
-	newModel := Model{
-		name:            name,
-		rulesRegistry:   newRecordRuleRegistry(),
-		tableName:       strutils.SnakeCase(name),
-		fields:          newFieldsCollection(),
-		methods:         newMethodsCollection(),
-		options:         ContextsModel | SystemModel,
-		sqlErrors:       make(map[string]string),
-		defaultOrderStr: []string{"ID"},
-	}
-	pkField := &Field{
-		name:      "ID",
-		json:      "id",
-		model:     &newModel,
-		required:  true,
-		noCopy:    true,
-		fieldType: fieldtype.Integer,
-		structField: reflect.TypeOf(
-			struct {
-				ID int64
-			}{},
-		).Field(0),
-	}
-	newModel.fields.add(pkField)
-	fkField := &Field{
-		name:             "Record",
-		json:             "record_id",
-		model:            &newModel,
-		required:         true,
-		noCopy:           true,
-		fieldType:        fieldtype.Many2One,
-		relatedModelName: fi.model.name,
-		relatedModel:     fi.model,
-		index:            true,
-		onDelete:         Cascade,
-		ctxType:          ctxFK,
-		structField: reflect.StructField{
-			Name: "Record",
-			Type: reflect.TypeOf(int64(0)),
-		},
-	}
-	newModel.fields.add(fkField)
-	valueField := *fi
-	valueField.model = &newModel
-	valueField.compute = ""
-	valueField.embed = false
-	valueField.stored = false
-	valueField.onChange = ""
-	valueField.constraint = ""
-	valueField.contexts = nil
-	valueField.ctxType = ctxValue
-	if valueField.defaultFunc == nil && valueField.required {
-		valueField.defaultFunc = DefaultValue(reflect.Zero(valueField.structField.Type).Interface())
-	}
-	newModel.fields.add(&valueField)
-
-	for ctName := range contexts {
-		ctField := &Field{
-			name:      ctName,
-			json:      strutils.SnakeCase(ctName),
-			model:     &newModel,
-			noCopy:    true,
-			fieldType: fieldtype.Char,
-			index:     true,
-			ctxType:   ctxContext,
-			structField: reflect.StructField{
-				Name: ctName,
-				Type: reflect.TypeOf(""),
-			},
-		}
-		newModel.fields.add(ctField)
-	}
-	Registry.add(&newModel)
-	injectMixInModel(Registry.MustGet("BaseMixin"), &newModel)
-	return &newModel
-}
-
-// processDepends populates the dependencies of each Field from the depends strings of
-// each Field instances.
-func processDepends() {
-	for _, mi := range Registry.registryByTableName {
-		for _, fInfo := range mi.fields.registryByJSON {
-			var refName string
-			for _, depString := range fInfo.depends {
-				if depString == "" {
-					continue
-				}
-				tokens := jsonizeExpr(mi, strings.Split(depString, ExprSep))
-				refName = tokens[len(tokens)-1]
-				path := strings.Join(tokens[:len(tokens)-1], ExprSep)
-				targetComputeData := computeData{
-					model:     mi,
-					stored:    fInfo.stored,
-					fieldName: fInfo.name,
-					compute:   fInfo.compute,
-					path:      path,
-				}
-				refModelInfo := mi.getRelatedModelInfo(mi.FieldName(path))
-				refField := refModelInfo.fields.MustGet(refName)
-				refField.dependencies = append(refField.dependencies, targetComputeData)
-			}
-		}
-	}
-}
-
-// checkComputeMethodsSignature check the signature of all methods used
-// in computed fields and for OnChange methods.
-// It panics if it is not the case.
-func checkComputeMethodsSignature() {
-	for _, model := range Registry.registryByName {
-		for _, fi := range model.fields.computedFields {
-			method := fi.model.methods.MustGet(fi.compute)
-			if err := checkMethType(method, "Compute methods"); err != nil {
-				log.Panic(err.Error(), "model", method.model.name, "method", method.name, "field", fi.name)
-			}
-		}
-		for _, fi := range model.fields.computedStoredFields {
-			method := fi.model.methods.MustGet(fi.compute)
-			if err := checkMethType(method, "Compute method for stored fields"); err != nil {
-				log.Panic(err.Error(), "model", method.model.name, "method", method.name, "field", fi.name)
-			}
-		}
-		for _, fi := range model.fields.registryByName {
-			if fi.onChange == "" {
-				continue
-			}
-			method := fi.model.methods.MustGet(fi.onChange)
-			if err := checkMethType(method, "OnchangeMethods"); err != nil {
-				log.Panic(err.Error(), "model", method.model.name, "method", method.name, "field", fi.name)
-			}
-		}
-		for _, fi := range model.fields.registryByName {
-			if fi.onChangeWarning == "" {
-				continue
-			}
-			method := fi.model.methods.MustGet(fi.onChangeWarning)
-			if err := checkOnChangeWarningType(method); err != nil {
-				log.Panic(err.Error(), "model", method.model.name, "method", method.name, "field", fi.name)
-			}
-		}
-		for _, fi := range model.fields.registryByName {
-			if fi.onChangeFilters == "" {
-				continue
-			}
-			method := fi.model.methods.MustGet(fi.onChangeFilters)
-			if err := checkOnChangeFiltersType(method); err != nil {
-				log.Panic(err.Error(), "model", method.model.name, "method", method.name, "field", fi.name)
-			}
-		}
-		for _, fi := range model.fields.registryByName {
-			if fi.inverse == "" {
-				continue
-			}
-			method := model.methods.MustGet(fi.inverse)
-			methType := method.methodType
-			if methType.NumIn() != 2 {
-				log.Panic("Inverse methods should have 2 arguments", "model", model.name, "field", fi.name, "method", method.name)
-			}
-			if methType.NumOut() != 0 {
-				log.Panic("Inverse methods should not return any value", "model", model.name, "field", fi.name, "method", method.name)
-			}
-		}
-	}
 }
 
 // checkMethType panics if the given method does not have

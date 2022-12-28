@@ -5,6 +5,7 @@ package loader
 
 import (
 	"github.com/hexya-erp/hexya/src/models"
+	"github.com/hexya-erp/hexya/src/models/loader/conditions"
 )
 
 // ------- MODEL ---------
@@ -14,7 +15,7 @@ import (
 // its NewSet() function.
 //
 // To get the unique instance of this type, call Company().
-type ModelDefinition[M Model] struct {
+type ModelDefinition[M any] struct {
 	*models.Model
 }
 
@@ -22,16 +23,20 @@ type ModelDefinition[M Model] struct {
 func (md ModelDefinition[M]) NewSet(env models.Environment) models.RecordSet {
 	return env.Pool(md.Name())
 }
-func (md ModelDefinition[M]) Create(env models.Environment, data M) *models.RecordCollection {
+func (md ModelDefinition[M]) Create(env models.Environment, data *models.ModelData) *models.RecordCollection {
 	return md.Model.Create(env, data)
 }
-func (md ModelDefinition[M]) wrapBaseType(coll *models.RecordCollection) M {
+
+func (md ModelDefinition[M]) Save(env models.Environment, data M) *models.RecordCollection {
+	return md.Model.Create(env, data)
+}
+func (md ModelDefinition[M]) wrapBaseType(coll *models.RecordCollection) *M {
 	return nil
 }
 
 // Create creates a new Company record and returns the newly created
 // CompanySet instance.
-func (md ModelDefinition[M]) CreateModel(env models.Environment, data M) M {
+func (md ModelDefinition[M]) CreateModel(env models.Environment, data *models.ModelData) *M {
 	dd := md.Create(env, data)
 	if dd != nil {
 		return nil
@@ -60,22 +65,26 @@ func (md ModelDefinition[M]) BrowseOne(env models.Environment, id int64) *models
 // NewData returns a pointer to a new empty CompanyData instance.
 //
 // Optional field maps if given will be used to populate the data.
-func (md ModelDefinition[M]) NewData(fm ...models.FieldMap) M {
-	return models.NewModelData(new(M), fm...)
+func (md ModelDefinition[M]) NewData(fm ...models.FieldMap) *models.ModelData {
+	return models.NewModelData(md.Model, fm...)
 }
 
 // Fields returns the Field Collection of the Company Model
-func (md ModelDefinition[M]) Fields() models.FieldsCollection {
-	return models.FieldsCollection{
-		md.Model.Fields(),
+func (md ModelDefinition[M]) Fields() FieldsCollection {
+	return FieldsCollection{
+		FieldsCollection: md.Model.Fields(),
+	}
+}
+
+func (ModelDefinition[M]) Query() conditions.ConditionStart {
+	return conditions.ConditionStart{
+		ConditionStart: &models.ConditionStart{},
 	}
 }
 
 // Methods returns the Method Collection of the Company Model
-func (md ModelDefinition) Methods() company.MethodsCollection {
-	return company.MethodsCollection{
-		MethodsCollection: md.Model.Methods(),
-	}
+func (md ModelDefinition[M]) Methods() *models.MethodsCollection {
+	return md.Model.Methods()
 }
 
 // Underlying returns the underlying models.Model instance
@@ -85,22 +94,20 @@ func (md ModelDefinition[M]) Underlying() *models.Model {
 
 // Coalesce takes a list of CompanySet and return the first non-empty one
 // if every record set is empty, it will return the last given
-func (md ModelDefinition[M]) Coalesce(lst ...m.CompanySet) m.CompanySet {
-	var last m.CompanySet
+func (md ModelDefinition[M]) Coalesce(lst ...models.RecordSet) *models.RecordSet {
+	var last models.RecordSet
 	for _, elem := range lst {
 		if elem.Collection().IsNotEmpty() {
-			return elem
+			return &elem
 		}
 		last = elem
 	}
-	return last
+	return &last
 }
 
 // Company returns the unique instance of the CompanyModel type
 // which is used to extend the Company model or to get a CompanySet through
 // its NewSet() function.
-func NewModelDefinition[M Model](mdl *models.Model) ModelDefinition[M] {
-	return ModelDefinition[M]{
-		Model: models.Registry.MustGet(mdl.Name()),
-	}
+func NewModelDefinition[M any](mdl interface{}) ModelDefinition[M] {
+	return NewTypedModel[M](mdl)
 }

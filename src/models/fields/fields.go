@@ -482,7 +482,9 @@ func (of One2Many) DeclareField(fc *models.FieldsCollection, name string) *model
 	if of.Filter != nil {
 		fInfo.SetProperty("filter", of.Filter.Underlying())
 	}
-	fInfo.SetProperty("relationModel", of.RelationModel.Underlying())
+	if of.RelationModel != nil {
+		fInfo.SetProperty("relationModel", of.RelationModel.Underlying())
+	}
 	fInfo.SetProperty("reverseFK", of.ReverseFK)
 	if !of.Copy {
 		fInfo.SetProperty("noCopy", true)

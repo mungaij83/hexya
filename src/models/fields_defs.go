@@ -223,9 +223,9 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "filter":
 		f.filter = value.(*Condition)
 	case "relationModel":
-		f.relatedModelName = value.(*Model).Name()
+		f.relatedModelName = value.(*Model[any]).Name()
 	case "m2mRelModel":
-		f.m2mRelModel = value.(*Model)
+		f.m2mRelModel = value.(*Model[any])
 	case "m2mOurField":
 		f.m2mOurField = value.(*Field)
 	case "m2mTheirField":

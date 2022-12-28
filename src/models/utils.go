@@ -30,7 +30,7 @@ var (
 // jsonizeExpr returns an expression slice with field names changed to the fields json names
 // Computation is made relatively to the given Model
 // e.g. [User Profile Name] -> [user_id profile_id name]
-func jsonizeExpr(mi *Model, exprs []string) []string {
+func jsonizeExpr(mi *Model[any], exprs []string) []string {
 	if len(exprs) == 0 {
 		return []string{}
 	}
@@ -49,7 +49,7 @@ func jsonizeExpr(mi *Model, exprs []string) []string {
 
 // addNameSearchesToCondition recursively modifies the given condition to search
 // on the name of the related records if they point to a relation field.
-func addNameSearchesToCondition(mi *Model, cond *Condition) {
+func addNameSearchesToCondition(mi *Model[any], cond *Condition) {
 	for i, p := range cond.predicates {
 		if p.cond != nil {
 			addNameSearchesToCondition(mi, p.cond)
@@ -88,7 +88,7 @@ func addNameSearchToExprs(fi *Field, exprs []FieldName) []FieldName {
 // jsonizePath returns a path with field names changed to the field json names
 // Computation is made relatively to the given Model
 // e.g. User.Profile.Name -> user_id.profile_id.name
-func jsonizePath(mi *Model, path string) string {
+func jsonizePath(mi *Model[any], path string) string {
 	exprs := strings.Split(path, ExprSep)
 	exprs = jsonizeExpr(mi, exprs)
 	return strings.Join(exprs, ExprSep)
@@ -96,7 +96,7 @@ func jsonizePath(mi *Model, path string) string {
 
 // filterOnDBFields returns the given fields slice with only stored fields.
 // This function also adds the "id" field to the list if not present unless dontAddID is true
-func filterOnDBFields(mi *Model, fields []FieldName, dontAddID ...bool) []FieldName {
+func filterOnDBFields(mi *Model[any], fields []FieldName, dontAddID ...bool) []FieldName {
 	var res []FieldName
 	// Check if fields are stored
 	for _, field := range fields {

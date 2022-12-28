@@ -416,7 +416,7 @@ func (c *Condition) IsEmpty() bool {
 // getAllExpressions returns a list of all exprs used in this condition,
 // and recursively in all subconditions.
 // Expressions are given in field json format
-func (c Condition) getAllExpressions(mi *Model) [][]FieldName {
+func (c Condition) getAllExpressions(mi *Model[any]) [][]FieldName {
 	var res [][]FieldName
 	for _, p := range c.predicates {
 		res = append(res, p.exprs)
@@ -429,7 +429,7 @@ func (c Condition) getAllExpressions(mi *Model) [][]FieldName {
 
 // substituteExprs recursively replaces condition exprs that match substs keys
 // with the corresponding substs values.
-func (c *Condition) substituteExprs(mi *Model, substs map[FieldName][]FieldName) {
+func (c *Condition) substituteExprs(mi *Model[any], substs map[FieldName][]FieldName) {
 	for i, p := range c.predicates {
 		for k, v := range substs {
 			if len(p.exprs) > 0 && joinFieldNames(p.exprs, ExprSep) == k {
@@ -459,7 +459,7 @@ func (c *Condition) substituteChildOfOperator(rc *RecordCollection) {
 			continue
 		}
 		var parentIds []int64
-		rc.Env().Cr().Select(&parentIds, adapters[db.DriverName()].childrenIdsQuery(recModel.tableName), p.arg)
+		rc.Env().Cr().Select(&parentIds, adapters[connParams.Driver].childrenIdsQuery(recModel.tableName), p.arg)
 		c.predicates[i].operator = operator.In
 		c.predicates[i].arg = parentIds
 	}

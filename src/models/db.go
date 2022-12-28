@@ -16,15 +16,16 @@ package models
 
 import (
 	"database/sql"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"time"
 
 	"github.com/hexya-erp/hexya/src/models/operator"
 	"github.com/hexya-erp/hexya/src/tools/strutils"
-	"github.com/jmoiron/sqlx"
 )
 
 var (
-	db         *sqlx.DB
+	db         *gorm.DB
 	connParams ConnectionParams
 	adapters   map[string]dbAdapter
 )
@@ -122,12 +123,12 @@ func registerDBAdapter(name string, adapter dbAdapter) {
 
 // Cursor is a wrapper around a database transaction
 type Cursor struct {
-	tx *sqlx.Tx
+	tx *gorm.DB
 }
 
 // Execute a query without returning any rows. It panics in case of error.
 // The args are for any placeholder parameters in the query.
-func (c *Cursor) Execute(query string, args ...interface{}) sql.Result {
+func (c *Cursor) Execute(query string, args ...interface{}) *sql.Rows {
 	return dbExecute(c.tx, query, args...)
 }
 
@@ -144,12 +145,14 @@ func (c *Cursor) Select(dest interface{}, query string, args ...interface{}) {
 }
 
 // newCursor returns a new db cursor on the given database
-func newCursor(db *sqlx.DB) *Cursor {
-	adapter := adapters[db.DriverName()]
-	tx := db.MustBegin()
-	dbExecute(tx, adapter.setTransactionIsolation())
+func newCursor(db *gorm.DB) *Cursor {
+	adapter, ok := adapters[connParams.Driver]
+	if !ok {
+		return nil
+	}
+	dbExecute(db, adapter.setTransactionIsolation())
 	return &Cursor{
-		tx: tx,
+		tx: db,
 	}
 }
 
@@ -162,32 +165,44 @@ func DBParams() ConnectionParams {
 func DBConnect(params ConnectionParams) {
 	connParams = params
 	connStr := DBParams().ConnectionString()
-	db = sqlx.MustConnect(params.Driver, connStr)
-	log.Info("Connected to database", "driver", params.Driver, "connStr", connStr)
+	var err error
+	db, err = gorm.Open(postgres.Open(connStr), &gorm.Config{})
+	if err != nil {
+		log.Panic("Could not connect to database,", "driver", params.Driver, "connStr", connStr, "err", err)
+	} else {
+		log.Info("Connected to database", "driver", params.Driver, "connStr", connStr)
+	}
 }
 
 // DBClose is a wrapper around sqlx.Close
 // It closes the connection to the database
 func DBClose() {
-	err := db.Close()
-	log.Info("Closed database", "error", err)
+	db, err := db.DB()
+	if err != nil {
+		log.Info("Closed database", "error", err)
+	} else {
+		err = db.Close()
+		if err != nil {
+			log.Info("Failed to closed database", "error", err)
+		}
+	}
 }
 
 // dbExecute is a wrapper around sqlx.MustExec
 // It executes a query that returns no row
-func dbExecute(cr *sqlx.Tx, query string, args ...interface{}) sql.Result {
+func dbExecute(cr *gorm.DB, query string, args ...interface{}) *sql.Rows {
 	query, args = sanitizeQuery(query, args...)
 	t := time.Now()
-	res, err := cr.Exec(query, args...)
+	res, err := cr.Select(query, args...).Rows()
 	logSQLResult(err, t, query, args...)
 	return res
 }
 
 // dbExecuteNoTx simply executes the given query in the database without any transaction
-func dbExecuteNoTx(query string, args ...interface{}) sql.Result {
+func dbExecuteNoTx(query string, args ...interface{}) gorm.Rows {
 	query, args = sanitizeQuery(query, args...)
 	t := time.Now()
-	res, err := db.Exec(query, args...)
+	res, err := db.Exec(query, args...).Rows()
 	logSQLResult(err, t, query, args...)
 	return res
 }
@@ -195,10 +210,10 @@ func dbExecuteNoTx(query string, args ...interface{}) sql.Result {
 // dbGet is a wrapper around sqlx.Get
 // It gets the value of a single row found by the given query and arguments
 // It panics in case of error
-func dbGet(cr *sqlx.Tx, dest interface{}, query string, args ...interface{}) {
+func dbGet(cr *gorm.DB, dest interface{}, query string, args ...interface{}) {
 	query, args = sanitizeQuery(query, args...)
 	t := time.Now()
-	err := cr.Get(dest, query, args...)
+	err := cr.Select(query, args...).Scan(dest).Error
 	logSQLResult(err, t, query, args)
 }
 
@@ -208,17 +223,17 @@ func dbGet(cr *sqlx.Tx, dest interface{}, query string, args ...interface{}) {
 func dbGetNoTx(dest interface{}, query string, args ...interface{}) {
 	query, args = sanitizeQuery(query, args...)
 	t := time.Now()
-	err := db.Get(dest, query, args...)
+	err := db.Exec(query, args...).Scan(dest).Error
 	logSQLResult(err, t, query, args)
 }
 
 // dbSelect is a wrapper around sqlx.Select
 // It gets the value of a multiple rows found by the given query and arguments
 // dest must be a slice. It panics in case of error
-func dbSelect(cr *sqlx.Tx, dest interface{}, query string, args ...interface{}) {
+func dbSelect(cr *gorm.DB, dest interface{}, query string, args ...interface{}) {
 	query, args = sanitizeQuery(query, args...)
 	t := time.Now()
-	err := cr.Select(dest, query, args...)
+	err := cr.Select(query, args...).Scan(dest).Error
 	logSQLResult(err, t, query, args)
 }
 
@@ -228,31 +243,28 @@ func dbSelect(cr *sqlx.Tx, dest interface{}, query string, args ...interface{}) 
 func dbSelectNoTx(dest interface{}, query string, args ...interface{}) {
 	query, args = sanitizeQuery(query, args...)
 	t := time.Now()
-	err := db.Select(dest, query, args...)
+	err := db.Select(query, args...).Scan(dest).Error
 	logSQLResult(err, t, query, args)
 }
 
 // dbQuery is a wrapper around sqlx.Queryx
 // It returns a sqlx.Rowsx found by the given query and arguments
 // It panics in case of error
-func dbQuery(cr *sqlx.Tx, query string, args ...interface{}) *sqlx.Rows {
+func dbQuery(cr *gorm.DB, query string, args ...interface{}) ([]FieldMap, int64) {
 	query, args = sanitizeQuery(query, args...)
+	dt := make([]FieldMap, 0)
+	var cnt int64
 	t := time.Now()
-	rows, err := cr.Queryx(query, args...)
+	err := cr.Select(query, args...).Scan(&dt).Count(&cnt).Error
 	logSQLResult(err, t, query, args)
-	return rows
+	return dt, cnt
 }
 
 // sanitizeQuery calls 'In' expansion and 'Rebind' on the given query and
 // returns the new values to use. It panics in case of error
 func sanitizeQuery(query string, args ...interface{}) (string, []interface{}) {
-	originalArgs := args
-	q, args, err := sqlx.In(query, args...)
-	if err != nil {
-		log.Panic("Unable to expand 'IN' statement", "error", err, "query", query, "args", originalArgs)
-	}
-	q = sqlx.Rebind(sqlx.BindType(db.DriverName()), q)
-	return q, args
+	log.Info("Unable to expand 'IN' statement", "query", query, "args", args)
+	return query, args
 }
 
 // Log the result of the given sql query started at start time with the

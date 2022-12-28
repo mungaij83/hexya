@@ -31,7 +31,7 @@ var unauthorizedMethods = map[string]bool{
 
 // A MethodsCollection is a collection of methods for use in a model
 type MethodsCollection struct {
-	model        *Model
+	model        *Model[any]
 	registry     map[string]*Method
 	bootstrapped bool
 }
@@ -133,7 +133,7 @@ type callerGroup struct {
 type Method struct {
 	sync.RWMutex
 	name          string
-	model         *Model
+	model         *Model[any]
 	methodType    reflect.Type
 	topLayer      *methodLayer
 	nextLayer     map[*methodLayer]*methodLayer
@@ -233,7 +233,7 @@ type methodLayer struct {
 
 // copyMethod creates a new method without any method layer for
 // the given model by taking data from the given method.
-func copyMethod(m *Model, method *Method) *Method {
+func copyMethod(m *Model[any], method *Method) *Method {
 	return &Method{
 		model:         m,
 		name:          method.name,
@@ -356,7 +356,7 @@ func (m *Model) addMethod(methodName string, fnct interface{}) *Method {
 }
 
 // NewMethod is used in modules to declare a new method for this model.
-func (m *Model) NewMethod(methodName string, fnct interface{}) *Method {
+func (m *Model[any]) NewMethod(methodName string, fnct interface{}) *Method {
 	meth, exists, inModel := m.methods.get(methodName)
 	if exists && !inModel {
 		// We are trying to add an existing mixin method as a new method
@@ -372,7 +372,7 @@ func (m *Model) NewMethod(methodName string, fnct interface{}) *Method {
 
 // AddEmptyMethod creates a new method without function layer
 // The resulting method cannot be called until finalize is called
-func (m *Model) AddEmptyMethod(methodName string) *Method {
+func (m *Model[any]) AddEmptyMethod(methodName string) *Method {
 	if m.methods.bootstrapped {
 		log.Panic("Create/ExtendMethod must be run before BootStrap", "model", m.name, "method", methodName)
 	}
@@ -485,7 +485,7 @@ func checkTypesMatch(type1, type2 reflect.Type) bool {
 // findMethodInMixin recursively goes through all mixins
 // to find the method with the given name. Returns true if
 // it found one, false otherwise.
-func (m *Model) findMethodInMixin(methodName string) (*Method, bool) {
+func (m *Model[any]) findMethodInMixin(methodName string) (*Method, bool) {
 	for _, mixin := range m.mixins {
 		if method, ok := mixin.methods.Get(methodName); ok {
 			return method, true

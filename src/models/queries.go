@@ -160,7 +160,7 @@ func (q *Query) predicateSQLClause(p predicate) (string, SQLParams) {
 	)
 	field, _, _ := q.joinedFieldExpression(p.exprs, false, 0)
 
-	adapter := adapters[db.DriverName()]
+	adapter := adapters[connParams.Driver]
 	arg := q.evaluateConditionArgFunctions(p)
 	opSql, arg := adapter.operatorSQL(p.operator, arg)
 
@@ -190,7 +190,7 @@ func (q *Query) predicateSQLClause(p predicate) (string, SQLParams) {
 	return sql, args
 }
 
-//nullSQLClause returns the sql string and arguments for searching the given field with an empty argument
+// nullSQLClause returns the sql string and arguments for searching the given field with an empty argument
 func nullSQLClause(field string, op operator.Operator, fi *Field) (string, SQLParams) {
 	var (
 		sql  string
@@ -324,7 +324,7 @@ func (q *Query) sqlCtxGroupByClause() string {
 // deleteQuery returns the SQL query string and parameters to unlink
 // the rows pointed at by this Query object.
 func (q *Query) deleteQuery() (string, SQLParams) {
-	adapter := adapters[db.DriverName()]
+	adapter := adapters[connParams.Driver]
 	sql, args := q.sqlWhereClause(false)
 	delQuery := fmt.Sprintf(`DELETE FROM %s %s`, adapter.quoteTableName(q.recordSet.model.tableName), sql)
 	return delQuery, args
@@ -333,7 +333,7 @@ func (q *Query) deleteQuery() (string, SQLParams) {
 // insertQuery returns the SQL query string and parameters to insert
 // a row with the given data.
 func (q *Query) insertQuery(data FieldMap) (string, SQLParams) {
-	adapter := adapters[db.DriverName()]
+	adapter := adapters[connParams.Driver]
 	if len(data) == 0 {
 		log.Panic("No data given for insert")
 	}
@@ -491,7 +491,7 @@ func (q *Query) substituteChildOfPredicates() {
 // updateQuery returns the SQL update string and parameters to update
 // the rows pointed at by this Query object with the given FieldMap.
 func (q *Query) updateQuery(data FieldMap) (string, SQLParams) {
-	adapter := adapters[db.DriverName()]
+	adapter := adapters[connParams.Driver]
 	if len(data) == 0 {
 		log.Panic("No data given for update")
 	}
@@ -550,8 +550,9 @@ func (q *Query) fieldsGroupSQL(fieldExprs [][]FieldName, aggFncts map[string]str
 }
 
 // joinedFieldExpression joins the given expressions into a fields sql string
-//     ['profile_id' 'user_id' 'name'] => "profiles__users".name
-//     ['age'] => "mytable".age
+//
+//	['profile_id' 'user_id' 'name'] => "profiles__users".name
+//	['age'] => "mytable".age
 //
 // If withAlias is true, then returns fields with its alias. In this case, aliasIndex is used
 // to define aliases when the nominal "profile_id__user_id__name" is longer than 64 chars.
@@ -573,7 +574,7 @@ func (q *Query) joinedFieldExpression(exprs []FieldName, withAlias bool, aliasIn
 // generateTableJoins transforms a list of fields expression into a list of tableJoins
 // ['user_id' 'profile_id' 'age'] => []tableJoins{CurrentTable User Profile}
 func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
-	adapter := adapters[db.DriverName()]
+	adapter := adapters[connParams.Driver]
 	var joins []tableJoin
 	curMI := q.recordSet.model
 	// Create the tableJoin for the current table
@@ -662,7 +663,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 // mapping between aliases in tableJoin objects and the new "Tn" aliases. This
 // mapping is necessary to keep table alias < 63 chars which is postgres limit.
 func (q *Query) tablesSQL(fExprs [][]FieldName) (string, map[string]string) {
-	adapter := adapters[db.DriverName()]
+	adapter := adapters[connParams.Driver]
 	var (
 		res        string
 		aliasIndex int
@@ -687,7 +688,7 @@ func (q *Query) tablesSQL(fExprs [][]FieldName) (string, map[string]string) {
 
 // thisTable returns the quoted table name of this query's recordset table
 func (q *Query) thisTable() string {
-	adapter := adapters[db.DriverName()]
+	adapter := adapters[connParams.Driver]
 	return adapter.quoteTableName(q.recordSet.model.tableName)
 }
 

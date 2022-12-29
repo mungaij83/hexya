@@ -4,6 +4,7 @@
 package reports_test
 
 import (
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
 	"github.com/hexya-erp/hexya/src/actions"
@@ -15,8 +16,8 @@ import (
 
 func TestReports(t *testing.T) {
 	Convey("Creating models", t, func() {
-		user := models.NewModel("User")
-		user.AddFields(map[string]models.FieldDefinition{
+		user := loader.NewModel("User")
+		user.AddFields(map[string]loader.FieldDefinition{
 			"UserName": fields.Char{},
 			"Age":      fields.Integer{},
 		})

@@ -91,7 +91,7 @@ func user_ext_DecorateEmail(rs m.UserSet, email string) string {
 	return fmt.Sprintf("[%s]", res)
 }
 
-func user_RecursiveMethod(rs m.UserSet, depth int, result string) string {
+func user_RecursiveMethod(rs loader.RecordSet, depth int, result string) string {
 	if depth == 0 {
 		return result
 	}
@@ -137,7 +137,7 @@ func user_UpdateCity(rs m.UserSet, value string) {
 	rs.Profile().SetCity(value)
 }
 
-func user_Aggregates(rs m.UserSet, fieldNames ...models.FieldName) []m.UserGroupAggregateRow {
+func user_Aggregates(rs m.UserSet, fieldNames ...loader.FieldName) []m.UserGroupAggregateRow {
 	return rs.Super().Aggregates(fieldNames...)
 }
 
@@ -259,7 +259,7 @@ type UserViewModel struct {
 }
 
 func init() {
-	user := loader.NewModelDefinition(UserModel{})
+	user := models.NewModelDefinition(UserModel{})
 
 	user.Fields().Experience().SetString("Professional Experience")
 
@@ -278,7 +278,7 @@ func init() {
 	user.Methods().PrefixedUser().Extend(user_ext_PrefixedUser)
 	user.Methods().Aggregates().Extend(user_Aggregates)
 
-	profile := loader.NewModelDefinition(ProfileModel{})
+	profile := models.NewModelDefinition(ProfileModel{})
 	profile.InheritModel(h.AddressMixIn())
 
 	profile.AddFields(fields_Profile)
@@ -287,35 +287,35 @@ func init() {
 	profile.Methods().PrintAddress().Extend(profile_PrintAddress)
 	profile.Methods().PrintAddress().Extend(profile_ext_PrintAddress)
 
-	post := loader.NewModelDefinition(PostModel{})
+	post := models.NewModelDefinition(PostModel{})
 
 	post.Methods().Create().Extend(post_Create)
 	post.Methods().Search().Extend(post_Search)
 
-	comment := loader.NewModelDefinition(CommentModel{})
+	comment := models.NewModelDefinition(CommentModel{})
 	print(comment.IsManual())
-	tag := loader.NewModelDefinition(TagModel{})
+	tag := models.NewModelDefinition(TagModel{})
 	tag.SetDefaultOrder("Name DESC", "ID ASC")
 
 	tag.NewMethod("CheckNameDescription", tag_CheckNameDescription).AllowGroup(security.GroupEveryone)
 	tag.NewMethod("CheckRate", tag_CheckRate)
 
-	resume := loader.NewModelDefinition(ResumeModel{})
+	resume := models.NewModelDefinition(ResumeModel{})
 
 	resume.Methods().Create().Extend(resume_Create)
 	resume.NewMethod("ComputeOther", resume_ComputeOther)
 
-	addressMI2 := loader.NewModelDefinition(AddressModelMixin{})
+	addressMI2 := models.NewModelDefinition(AddressModelMixin{})
 	addressMI2.NewMethod("SayHello", addressMixIn_SayHello)
 	addressMI2.NewMethod("PrintAddress", addressMixIn_PrintAddress)
 	addressMI2.Methods().PrintAddress().Extend(addressMixIn_ext_PrintAddress)
 
-	activeMixin1 := loader.NewModelDefinition(ActiveModelMixin{})
+	activeMixin1 := models.NewModelDefinition(ActiveModelMixin{})
 
 	// Chained declaration
 	activeMI2 := activeMixin1
 	activeMI2.NewMethod("IsActivated", activeMixIn_IsActivated)
 
-	manualModel := loader.NewModelDefinition(UserViewModel{})
+	manualModel := models.NewModelDefinition(UserViewModel{})
 	print(manualModel.IsManual())
 }

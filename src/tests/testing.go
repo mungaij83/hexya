@@ -5,6 +5,7 @@ package tests
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,14 +31,14 @@ var driver, user, password, prefix, debug string
 // It is meant to be used for modules testing. Initialize your module's
 // tests with:
 //
-//     import (
-//         "testing"
-//         "github.com/hexya-erp/hexya/src/tests"
-//     )
+//	    import (
+//	        "testing"
+//	        "github.com/hexya-erp/hexya/src/tests"
+//	    )
 //
-//     func TestMain(m *testing.M) {
-//	       tests.RunTests(m, "my_module")
-//     }
+//	    func TestMain(m *testing.M) {
+//		       tests.RunTests(m, "my_module")
+//	    }
 func RunTests(m *testing.M, moduleName string, preHookFnct func()) {
 	var res int
 	defer func() {
@@ -106,7 +107,7 @@ func InitializeTests(moduleName string) {
 	db.Close()
 
 	server.PreInit()
-	models.DBConnect(models.ConnectionParams{
+	loader.DBConnect(loader.ConnectionParams{
 		Driver:   driver,
 		DBName:   dbName,
 		User:     user,
@@ -135,7 +136,7 @@ func InitializeTests(moduleName string) {
 
 // TearDownTests tears down the tests for the given module
 func TearDownTests(moduleName string) {
-	models.DBClose()
+	loader.DBClose()
 	keepDB := os.Getenv("HEXYA_KEEP_TEST_DB")
 	if keepDB != "" {
 		return

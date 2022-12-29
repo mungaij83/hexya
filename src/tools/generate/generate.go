@@ -6,6 +6,7 @@ package generate
 import (
 	"bytes"
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"go/format"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/tools/strutils"
 )
 
@@ -260,7 +260,7 @@ func addFieldsToModelData(modelASTData ModelASTData, modelData *modelData, depsM
 			typStr = fmt.Sprintf("%s.%sSet", PoolInterfacesPackage, fieldASTData.RelModel)
 			iTypStr = fmt.Sprintf("%sSet", fieldASTData.RelModel)
 		}
-		jsonName := strutils.GetDefaultString(fieldASTData.JSON, models.SnakeCaseFieldName(fieldName, fieldASTData.FType))
+		jsonName := strutils.GetDefaultString(fieldASTData.JSON, loader.SnakeCaseFieldName(fieldName, fieldASTData.FType))
 		modelData.Fields = append(modelData.Fields, fieldData{
 			Name:       fieldName,
 			JSON:       jsonName,

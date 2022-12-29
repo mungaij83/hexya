@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/hexya-erp/hexya/src/models"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	html "html/template"
 	text "text/template"
 )
@@ -19,7 +19,7 @@ import (
 type TextReport struct {
 	Id       string
 	Name     string
-	Modeler  models.Modeler
+	Modeler  loader.Modeler
 	MimeType string
 	Filename string
 	Template string
@@ -83,7 +83,7 @@ func (r *TextReport) ID() string {
 }
 
 // Model returns the name of the model that this report is bound to.
-func (r *TextReport) Model() models.Modeler {
+func (r *TextReport) Model() loader.Modeler {
 	return r.Modeler
 }
 

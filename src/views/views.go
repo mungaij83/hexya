@@ -21,6 +21,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"strings"
 	"sync"
 
@@ -373,7 +374,7 @@ func (v *View) setViewType() {
 
 // extractSubViews recursively scans arch for embedded views,
 // extract them from arch and add them to SubViews.
-func (v *View) extractSubViews(model *models.Model, fInfos map[string]*models.FieldInfo) {
+func (v *View) extractSubViews(model *loader.Model, fInfos map[string]*loader.FieldInfo) {
 	archElem := v.arch.Copy()
 	fieldElems := archElem.FindElements("//field")
 	for _, f := range fieldElems {
@@ -424,7 +425,7 @@ func (v *View) postProcess() {
 
 // UpdateFieldNames changes the field names in the view to the column names.
 // If a field name is already column names then it does nothing.
-func (v *View) updateFieldNames(model *models.Model) {
+func (v *View) updateFieldNames(model *loader.Model) {
 	for _, fieldTag := range v.arch.FindElements("//field") {
 		if xmlutils.HasParentTag(fieldTag, "field") {
 			// Discard fields of embedded views
@@ -448,7 +449,7 @@ func (v *View) updateFieldNames(model *models.Model) {
 
 // AddOnchanges adds onchange=1 for each field in the view which has an OnChange
 // method defined
-func (v *View) AddOnchanges(fInfos map[string]*models.FieldInfo) {
+func (v *View) AddOnchanges(fInfos map[string]*loader.FieldInfo) {
 	for fieldName, fInfo := range fInfos {
 		if !fInfo.OnChange {
 			continue

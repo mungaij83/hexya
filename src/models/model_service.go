@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"github.com/hexya-erp/hexya/src/models/loader"
+	"github.com/hexya-erp/hexya/src/tools"
 )
 
 // RecordOptions extra options to be used with GORM models
@@ -18,19 +19,19 @@ type PrimaryKeys interface {
 // Repository Type of repository to represent any query link between
 type Repository[T any, K PrimaryKeys] interface {
 	Save(v T) (*T, error)
-	Search(cond Condition) ([]T, error)
+	Search(cond loader.Condition) ([]T, error)
 	TableName() string
 	Delete(v T) (*T, error)
-	validateAndInitialize(modelLoader *loader.ModelLoader) error
-	setEnv(v *Environment) error
+	validateAndInitialize(modelLoader *ModelLoader) error
+	setEnv(v *loader.Environment) error
 	FindById(id K) (*T, error)
 	FindByIdWithOptions(id K, options RecordOptions) (*T, error)
 	FindByIds(id []K) ([]T, error)
 	FindByIdsWithOptions(id []K, option RecordOptions) ([]T, error)
-	Methods() *MethodsCollection
-	Fields() *FieldsCollection
-	GetFieldName(s string) FieldName
-	GetModel() (*Model, bool)
+	Methods() *loader.MethodsCollection
+	Fields() *loader.FieldsCollection
+	GetFieldName(s string) loader.FieldName
+	GetModel() (*loader.Model, bool)
 	Roles()
 	IsMixin() bool
 	IsManual() bool
@@ -43,13 +44,12 @@ type Repository[T any, K PrimaryKeys] interface {
 
 // ModelRepository default implementation of model repository
 type ModelRepository[T any, K PrimaryKeys] struct {
-	env       *Environment
-	options   Option
+	env       *loader.Environment
 	tableName string
-	model     *Model
+	model     *loader.Model
 }
 
-func (mr *ModelRepository[T, K]) validateAndInitialize(loader *loader.ModelLoader) error {
+func (mr *ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) error {
 	if mr.env == nil {
 		return errors.New("environment is not set for this repository, call set env first")
 	}
@@ -58,20 +58,19 @@ func (mr *ModelRepository[T, K]) validateAndInitialize(loader *loader.ModelLoade
 		return err
 	}
 	// Migrate this model
-	err = mr.env.cr.tx.AutoMigrate(new(T))
+	err = mr.env.Cr().AutoMigrate(new(T))
 	if err != nil {
 		return err
 	}
 	mr.model = mdl
-	mr.options = mdl.options
 	// Resolve model table name
-	mr.tableName = mr.env.cr.tx.Unscoped().Model(new(T)).Name()
+	mr.tableName = mr.env.Cr().Unscoped().Model(new(T)).Name()
 	return nil
 }
-func (mr *ModelRepository[T, K]) GetModel() (*Model, bool) {
+func (mr *ModelRepository[T, K]) GetModel() (*loader.Model, bool) {
 	return mr.model, mr.model != nil
 }
-func (mr *ModelRepository[T, K]) setEnv(env *Environment) error {
+func (mr *ModelRepository[T, K]) setEnv(env *loader.Environment) error {
 	if mr.env != nil {
 		return errors.New("tried to reinitialize environment")
 	}
@@ -80,15 +79,15 @@ func (mr *ModelRepository[T, K]) setEnv(env *Environment) error {
 }
 
 func (mr *ModelRepository[T, K]) Save(v T) (*T, error) {
-	err := mr.env.cr.tx.Save(&v).Error
+	err := mr.env.Cr().Save(&v).Error
 	if err != nil {
 		return nil, err
 	}
 	return &v, nil
 }
-func (mr *ModelRepository[T, K]) Search(cond Condition) ([]T, error) {
+func (mr *ModelRepository[T, K]) Search(cond loader.Condition) ([]T, error) {
 	var vv []T
-	err := mr.env.cr.tx.Find(&vv).Error
+	err := mr.env.Cr().Find(&vv).Error
 	if err != nil {
 		return nil, err
 	}
@@ -98,24 +97,24 @@ func (mr *ModelRepository[T, K]) TableName() string {
 	return mr.tableName
 }
 
-func (mr *ModelRepository[T, K]) Methods() *MethodsCollection {
+func (mr *ModelRepository[T, K]) Methods() *loader.MethodsCollection {
 	return mr.model.Methods()
 }
 
-func (mr *ModelRepository[T, K]) Fields() *FieldsCollection {
+func (mr *ModelRepository[T, K]) Fields() *loader.FieldsCollection {
 	return mr.Fields()
 }
 
-func (mr *ModelRepository[T, K]) GetFieldName(s string) FieldName {
+func (mr *ModelRepository[T, K]) GetFieldName(s string) loader.FieldName {
 	dd, ok := mr.model.Fields().Get(s)
 	if !ok {
 		return nil
 	}
-	return NewFieldName(dd.name, dd.json)
+	return loader.NewFieldName(dd.Name(), dd.JSON())
 }
 
 func (mr *ModelRepository[T, K]) Delete(v T) (*T, error) {
-	err := mr.env.cr.tx.Delete(&v).Error
+	err := mr.env.Cr().Delete(&v).Error
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +123,7 @@ func (mr *ModelRepository[T, K]) Delete(v T) (*T, error) {
 
 func (mr *ModelRepository[T, K]) FindById(id K) (*T, error) {
 	var v T
-	err := mr.env.cr.tx.First(&v, id).Error
+	err := mr.env.Cr().First(&v, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +132,7 @@ func (mr *ModelRepository[T, K]) FindById(id K) (*T, error) {
 
 func (mr *ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions) (*T, error) {
 	var v T
-	db := mr.env.cr.tx
+	db := mr.env.Cr()
 	if len(options.EagerLoad) > 0 {
 		for _, opt := range options.EagerLoad {
 			db = db.Preload(opt)
@@ -148,7 +147,7 @@ func (mr *ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions
 
 func (mr *ModelRepository[T, K]) FindByIds(ids []K) ([]T, error) {
 	var v []T
-	err := mr.env.cr.tx.Find(&v, ids).Error
+	err := mr.env.Cr().Find(&v, ids).Error
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +156,7 @@ func (mr *ModelRepository[T, K]) FindByIds(ids []K) ([]T, error) {
 
 func (mr *ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOptions) ([]T, error) {
 	var v []T
-	db := mr.env.cr.tx
+	db := mr.env.Cr()
 	if len(options.EagerLoad) > 0 {
 		for _, opt := range options.EagerLoad {
 			db.Preload(opt)
@@ -171,7 +170,7 @@ func (mr *ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOpti
 }
 
 func (mr *ModelRepository[T, K]) IsMixin() bool {
-	if mr.options&MixinModel > 0 {
+	if mr.model.Options()&tools.MixinModel > 0 {
 		return true
 	}
 	return false
@@ -179,7 +178,7 @@ func (mr *ModelRepository[T, K]) IsMixin() bool {
 
 // IsManual returns true if this is a manual model.
 func (mr *ModelRepository[T, K]) IsManual() bool {
-	if mr.options&ManualModel > 0 {
+	if mr.model.Options()&tools.ManualModel > 0 {
 		return true
 	}
 	return false
@@ -187,7 +186,7 @@ func (mr *ModelRepository[T, K]) IsManual() bool {
 
 // isSystem returns true if this is a system model.
 func (mr *ModelRepository[T, K]) isSystem() bool {
-	if mr.options&SystemModel > 0 {
+	if mr.model.Options()&tools.SystemModel > 0 {
 		return true
 	}
 	return false
@@ -195,7 +194,7 @@ func (mr *ModelRepository[T, K]) isSystem() bool {
 
 // isContext returns true if this is a context model.
 func (mr *ModelRepository[T, K]) isContext() bool {
-	if mr.options&ContextsModel > 0 {
+	if mr.model.Options()&tools.ContextsModel > 0 {
 		return true
 	}
 	return false
@@ -203,7 +202,7 @@ func (mr *ModelRepository[T, K]) isContext() bool {
 
 // IsM2MLink returns true if this is an M2M Link model.
 func (mr *ModelRepository[T, K]) IsM2MLink() bool {
-	if mr.options&Many2ManyLinkModel > 0 {
+	if mr.model.Options()&tools.Many2ManyLinkModel > 0 {
 		return true
 	}
 	return false
@@ -211,7 +210,7 @@ func (mr *ModelRepository[T, K]) IsM2MLink() bool {
 
 // IsTransient returns true if this Model is transient
 func (mr *ModelRepository[T, K]) IsTransient() bool {
-	return mr.options == TransientModel
+	return mr.model.Options() == tools.TransientModel
 }
 
 // hasParentField returns true if this model is recursive and has a Parent field.

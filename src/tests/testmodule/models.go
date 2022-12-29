@@ -16,10 +16,10 @@ package testmodule
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"log"
 
 	"github.com/hexya-erp/hexya/src/actions"
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/fields"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"github.com/hexya-erp/hexya/src/models/types"
@@ -41,17 +41,17 @@ const (
 
 const isPremiumString = isPremiumDescription
 
-var fields_User = map[string]models.FieldDefinition{
+var fields_User = map[string]loader.FieldDefinition{
 	"Name": fields.Char{String: "Name", Help: "The user's username", Unique: true,
 		NoCopy: true, OnChange: h.User().Methods().OnChangeName()},
 	"DecoratedName": fields.Char{Compute: h.User().Methods().ComputeDecoratedName()},
 	"Email":         fields.Char{Help: "The user's email address", Size: 100, Index: true},
 	"Password":      fields.Char{NoCopy: true},
 	"Status": fields.Integer{JSON: "status_json", GoType: new(int16),
-		Default: models.DefaultValue(int16(12))},
+		Default: loader.DefaultValue(int16(12))},
 	"IsStaff":  fields.Boolean{String: isStaffString, Help: IsStaffHelp},
 	"IsActive": fields.Boolean{},
-	"Profile":  fields.One2One{OnDelete: models.SetNull, RelationModel: h.Profile()},
+	"Profile":  fields.One2One{OnDelete: loader.SetNull, RelationModel: h.Profile()},
 	"Age": fields.Integer{Compute: h.User().Methods().ComputeAge(),
 		Inverse: h.User().Methods().InverseSetAge(),
 		Depends: []string{"Profile", "Profile.Age"}, Stored: true, GoType: new(int16)},
@@ -142,11 +142,11 @@ func user_UpdateCity(rs m.UserSet, value string) {
 	rs.Profile().SetCity(value)
 }
 
-func user_Aggregates(rs m.UserSet, fieldNames ...models.FieldName) []m.UserGroupAggregateRow {
+func user_Aggregates(rs m.UserSet, fieldNames ...loader.FieldName) []m.UserGroupAggregateRow {
 	return rs.Super().Aggregates(fieldNames...)
 }
 
-var fields_Profile = map[string]models.FieldDefinition{
+var fields_Profile = map[string]loader.FieldDefinition{
 	"Age":      fields.Integer{GoType: new(int16)},
 	"Gender":   fields.Selection{Selection: types.Selection{"male": "Male", "female": "Female"}},
 	"Money":    fields.Float{},
@@ -167,7 +167,7 @@ func profile_ext_PrintAddress(rs m.ProfileSet) string {
 	return fmt.Sprintf("[%s]", res)
 }
 
-var fields_Post = map[string]models.FieldDefinition{
+var fields_Post = map[string]loader.FieldDefinition{
 	"User":             fields.Many2One{RelationModel: h.User()},
 	"Title":            fields.Char{Required: true},
 	"Content":          fields.HTML{},
@@ -191,14 +191,14 @@ func post_Search(rs m.PostSet, cond q.PostCondition) m.PostSet {
 	return res
 }
 
-var fields_Comment = map[string]models.FieldDefinition{
+var fields_Comment = map[string]loader.FieldDefinition{
 	"Post":        fields.Many2One{RelationModel: h.Post()},
 	"PostWriter":  fields.Many2One{RelationModel: h.User(), Related: "Post.User"},
 	"WriterMoney": fields.Float{Related: "PostWriter.PMoney"},
 	"Text":        fields.Text{},
 }
 
-var fields_Tag = map[string]models.FieldDefinition{
+var fields_Tag = map[string]loader.FieldDefinition{
 	"Name":        fields.Char{Constraint: h.Tag().Methods().CheckNameDescription()},
 	"BestPost":    fields.Many2One{RelationModel: h.Post()},
 	"Posts":       fields.Many2Many{RelationModel: h.Post()},
@@ -219,7 +219,7 @@ func tag_CheckRate(rs m.TagSet) {
 	}
 }
 
-var fields_Resume = map[string]models.FieldDefinition{
+var fields_Resume = map[string]loader.FieldDefinition{
 	"Education":  fields.Text{},
 	"Experience": fields.Text{Translate: true},
 	"Leisure":    fields.Text{},
@@ -234,7 +234,7 @@ func resume_ComputeOther(_ m.ResumeSet) m.ResumeData {
 	return h.Resume().NewData().SetOther("Other information")
 }
 
-var fields_AddressMixIn = map[string]models.FieldDefinition{
+var fields_AddressMixIn = map[string]loader.FieldDefinition{
 	"Street": fields.Char{GoType: new(string)},
 	"Zip":    fields.Char{},
 	"City":   fields.Char{},
@@ -253,7 +253,7 @@ func addressMixIn_ext_PrintAddress(rs m.AddressMixInSet) string {
 	return fmt.Sprintf("<%s>", res)
 }
 
-var fields_ActiveMixin = map[string]models.FieldDefinition{
+var fields_ActiveMixin = map[string]loader.FieldDefinition{
 	"Active": fields.Boolean{},
 }
 
@@ -261,13 +261,13 @@ func activeMixIn_IsActivated(rs m.ActiveMixInSet) bool {
 	return rs.Active()
 }
 
-var fields_UserView = map[string]models.FieldDefinition{
+var fields_UserView = map[string]loader.FieldDefinition{
 	"Name": fields.Char{},
 	"City": fields.Char{},
 }
 
 func init() {
-	models.NewModel("User")
+	loader.NewModel("User")
 
 	h.User().AddFields(fields_User)
 	h.User().Fields().Experience().SetString("Professional Experience")
@@ -287,7 +287,7 @@ func init() {
 	h.User().Methods().PrefixedUser().Extend(user_ext_PrefixedUser)
 	h.User().Methods().Aggregates().Extend(user_Aggregates)
 
-	models.NewModel("Profile")
+	loader.NewModel("Profile")
 	h.Profile().InheritModel(h.AddressMixIn())
 
 	h.Profile().AddFields(fields_Profile)
@@ -296,18 +296,18 @@ func init() {
 	h.Profile().Methods().PrintAddress().Extend(profile_PrintAddress)
 	h.Profile().Methods().PrintAddress().Extend(profile_ext_PrintAddress)
 
-	models.NewModel("Post")
+	loader.NewModel("Post")
 
 	h.Post().AddFields(fields_Post)
 
 	h.Post().Methods().Create().Extend(post_Create)
 	h.Post().Methods().Search().Extend(post_Search)
 
-	models.NewModel("Comment")
+	loader.NewModel("Comment")
 
 	h.Comment().AddFields(fields_Comment)
 
-	models.NewModel("Tag")
+	loader.NewModel("Tag")
 	h.Tag().SetDefaultOrder("Name DESC", "ID ASC")
 
 	h.Tag().AddFields(fields_Tag)
@@ -315,7 +315,7 @@ func init() {
 	h.Tag().NewMethod("CheckNameDescription", tag_CheckNameDescription).AllowGroup(security.GroupEveryone)
 	h.Tag().NewMethod("CheckRate", tag_CheckRate)
 
-	models.NewModel("Resume")
+	loader.NewModel("Resume")
 
 	h.Resume().AddFields(fields_Resume)
 
@@ -327,10 +327,10 @@ func init() {
 	addressMI2.NewMethod("PrintAddress", addressMixIn_PrintAddress)
 	addressMI2.Methods().PrintAddress().Extend(addressMixIn_ext_PrintAddress)
 
-	models.NewMixinModel("AddressMixIn")
+	loader.NewMixinModel("AddressMixIn")
 	h.AddressMixIn().AddFields(fields_AddressMixIn)
 
-	models.NewMixinModel("ActiveMixIn")
+	loader.NewMixinModel("ActiveMixIn")
 	h.ActiveMixIn().AddFields(fields_ActiveMixin)
 	h.ModelMixin().InheritModel(h.ActiveMixIn())
 
@@ -339,6 +339,6 @@ func init() {
 	activeMI2 := activeMI1
 	activeMI2.NewMethod("IsActivated", activeMixIn_IsActivated)
 
-	models.NewManualModel("UserView")
+	loader.NewManualModel("UserView")
 	h.UserView().AddFields(fields_UserView)
 }

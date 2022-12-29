@@ -16,6 +16,7 @@ package testllmodule
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"log"
 
 	"github.com/hexya-erp/hexya/src/models"
@@ -25,26 +26,26 @@ import (
 )
 
 func declareModels() {
-	user := models.NewModel("User")
-	profile := models.NewModel("Profile")
-	post := models.NewModel("Post")
-	tag := models.NewModel("Tag")
-	cv := models.NewModel("Resume")
-	addressMI := models.NewMixinModel("AddressMixIn")
-	activeMI := models.NewMixinModel("ActiveMixIn")
-	viewModel := models.NewManualModel("UserView")
+	user := loader.NewModel("User")
+	profile := loader.NewModel("Profile")
+	post := loader.NewModel("Post")
+	tag := loader.NewModel("Tag")
+	cv := loader.NewModel("Resume")
+	addressMI := loader.NewMixinModel("AddressMixIn")
+	activeMI := loader.NewMixinModel("ActiveMixIn")
+	viewModel := loader.NewManualModel("UserView")
 
 	user.NewMethod("PrefixedUser",
-		func(rc *models.RecordCollection, prefix string) []string {
+		func(rc *loader.RecordCollection, prefix string) []string {
 			var res []string
 			for _, u := range rc.Records() {
-				res = append(res, fmt.Sprintf("%s: %s", prefix, u.Get(models.Name)))
+				res = append(res, fmt.Sprintf("%s: %s", prefix, u.Get(loader.Name)))
 			}
 			return res
 		})
 
 	user.Methods().MustGet("PrefixedUser").Extend(
-		func(rc *models.RecordCollection, prefix string) []string {
+		func(rc *loader.RecordCollection, prefix string) []string {
 			res := rc.Super().Call("PrefixedUser", prefix).([]string)
 			for i, u := range rc.Records() {
 				email := u.Get(rc.Model().FieldName("Email")).(string)
@@ -54,7 +55,7 @@ func declareModels() {
 		})
 
 	user.NewMethod("DecorateEmail",
-		func(rc *models.RecordCollection, email string) string {
+		func(rc *loader.RecordCollection, email string) string {
 			if rc.Env().Context().HasKey("use_square_brackets") {
 				return fmt.Sprintf("[%s]", email)
 			}
@@ -62,10 +63,10 @@ func declareModels() {
 		})
 
 	user.Methods().MustGet("DecorateEmail").Extend(
-		func(rc *models.RecordCollection, email string) string {
+		func(rc *loader.RecordCollection, email string) string {
 			if rc.Env().Context().HasKey("use_double_square") {
 				rc = rc.
-					Call("WithContext", "use_square_brackets", true).(*models.RecordCollection).
+					Call("WithContext", "use_square_brackets", true).(*loader.RecordCollection).
 					WithContext("fake_key", true)
 			}
 			res := rc.Super().Call("DecorateEmail", email).(string)
@@ -73,89 +74,89 @@ func declareModels() {
 		})
 
 	user.NewMethod("OnChangeName",
-		func(rc *models.RecordCollection) *models.ModelData {
-			res := make(models.FieldMap)
+		func(rc *loader.RecordCollection) *loader.ModelData {
+			res := make(loader.FieldMap)
 			res["DecoratedName"] = rc.Call("PrefixedUser", "User").([]string)[0]
-			return models.NewModelDataFromRS(rc, res)
+			return loader.NewModelDataFromRS(rc, res)
 		})
 
 	user.NewMethod("ComputeDecoratedName",
-		func(rc *models.RecordCollection) *models.ModelData {
-			res := make(models.FieldMap)
+		func(rc *loader.RecordCollection) *loader.ModelData {
+			res := make(loader.FieldMap)
 			res["DecoratedName"] = rc.Call("PrefixedUser", "User").([]string)[0]
-			return models.NewModelDataFromRS(rc, res)
+			return loader.NewModelDataFromRS(rc, res)
 		})
 
 	user.NewMethod("ComputeAge",
-		func(rc *models.RecordCollection) *models.ModelData {
-			res := make(models.FieldMap)
-			res["Age"] = rc.Get(rc.Model().FieldName("Profile")).(*models.RecordCollection).Get(rc.Model().FieldName("Age")).(int16)
-			return models.NewModelDataFromRS(rc, res)
+		func(rc *loader.RecordCollection) *loader.ModelData {
+			res := make(loader.FieldMap)
+			res["Age"] = rc.Get(rc.Model().FieldName("Profile")).(*loader.RecordCollection).Get(rc.Model().FieldName("Age")).(int16)
+			return loader.NewModelDataFromRS(rc, res)
 		})
 
 	user.NewMethod("InverseSetAge",
-		func(rc *models.RecordCollection, age int16) {
-			rc.Get(rc.Model().FieldName("Profile")).(*models.RecordCollection).Set(rc.Model().FieldName("Age"), age)
+		func(rc *loader.RecordCollection, age int16) {
+			rc.Get(rc.Model().FieldName("Profile")).(*loader.RecordCollection).Set(rc.Model().FieldName("Age"), age)
 		})
 
 	user.NewMethod("UpdateCity",
-		func(rc *models.RecordCollection, value string) {
-			rc.Get(rc.Model().FieldName("Profile")).(*models.RecordCollection).Set(rc.Model().FieldName("City"), value)
+		func(rc *loader.RecordCollection, value string) {
+			rc.Get(rc.Model().FieldName("Profile")).(*loader.RecordCollection).Set(rc.Model().FieldName("City"), value)
 		})
 
 	activeMI.NewMethod("IsActivated",
-		func(rc *models.RecordCollection) bool {
+		func(rc *loader.RecordCollection) bool {
 			return rc.Get(rc.Model().FieldName("Active")).(bool)
 		})
 
 	addressMI.NewMethod("SayHello",
-		func(rc *models.RecordCollection) string {
+		func(rc *loader.RecordCollection) string {
 			return "Hello !"
 		})
 
 	addressMI.NewMethod("PrintAddress",
-		func(rc *models.RecordCollection) string {
+		func(rc *loader.RecordCollection) string {
 			return fmt.Sprintf("%s, %s %s", rc.Get(rc.Model().FieldName("Street")), rc.Get(rc.Model().FieldName("Zip")), rc.Get(rc.Model().FieldName("City")))
 		})
 
 	profile.NewMethod("PrintAddress",
-		func(rc *models.RecordCollection) string {
+		func(rc *loader.RecordCollection) string {
 			res := rc.Super().Call("PrintAddress").(string)
 			return fmt.Sprintf("%s, %s", res, rc.Get(rc.Model().FieldName("Country")))
 		})
 
 	addressMI.Methods().MustGet("PrintAddress").Extend(
-		func(rc *models.RecordCollection) string {
+		func(rc *loader.RecordCollection) string {
 			res := rc.Super().Call("PrintAddress").(string)
 			return fmt.Sprintf("<%s>", res)
 		})
 
 	profile.Methods().MustGet("PrintAddress").Extend(
-		func(rc *models.RecordCollection) string {
+		func(rc *loader.RecordCollection) string {
 			res := rc.Super().Call("PrintAddress").(string)
 			return fmt.Sprintf("[%s]", res)
 		})
 
 	post.Methods().MustGet("Create").Extend(
-		func(rc *models.RecordCollection, data models.RecordData) *models.RecordCollection {
-			res := rc.Super().Call("Create", data).(models.RecordSet).Collection()
+		func(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
+			res := rc.Super().Call("Create", data).(loader.RecordSet).Collection()
 			return res
 		})
 
 	post.Methods().MustGet("WithContext").Extend(
-		func(rc *models.RecordCollection, key string, value interface{}) *models.RecordCollection {
-			return rc.Super().Call("WithContext", key, value).(*models.RecordCollection)
+		func(rc *loader.RecordCollection, key string, value interface{}) *loader.RecordCollection {
+			return rc.Super().Call("WithContext", key, value).(*loader.RecordCollection)
 		})
 
 	tag.NewMethod("CheckRate",
-		func(rc *models.RecordCollection) {
+		func(rc *loader.RecordCollection) {
 			if rc.Get(rc.Model().FieldName("Rate")).(float32) < 0 || rc.Get(rc.Model().FieldName("Rate")).(float32) > 10 {
 				log.Panic("Tag rate must be between 0 and 10")
 			}
 		})
 
 	tag.NewMethod("CheckNameDescription",
-		func(rc *models.RecordCollection) {
+		func(rc *loader.RecordCollection) {
 			if rc.Get(rc.Model().FieldName("Name")).(string) == rc.Get(rc.Model().FieldName("Description")).(string) {
 				log.Panic("Tag name and description must be different")
 			}
@@ -167,14 +168,14 @@ func declareModels() {
 	}
 	tag.Methods().AllowAllToGroup(security.GroupEveryone)
 
-	user.AddFields(map[string]models.FieldDefinition{
+	user.AddFields(map[string]loader.FieldDefinition{
 		"Name": fields.Char{String: "Name", Help: "The user's username", Unique: true,
 			NoCopy: true, OnChange: user.Methods().MustGet("OnChangeName")},
 		"DecoratedName": fields.Char{Compute: user.Methods().MustGet("ComputeDecoratedName")},
 		"Email":         fields.Char{Help: "The user's email address", Size: 100, Index: true},
 		"Password":      fields.Char{NoCopy: true},
 		"Status": fields.Integer{JSON: "status_json", GoType: new(int16),
-			Default: models.DefaultValue(int16(12))},
+			Default: loader.DefaultValue(int16(12))},
 		"IsStaff":  fields.Boolean{},
 		"IsActive": fields.Boolean{},
 		"Profile":  fields.Many2One{RelationModel: models.Registry.MustGet("Profile")},
@@ -191,7 +192,7 @@ func declareModels() {
 		"Education": fields.Text{String: "Educational Background"},
 	})
 
-	profile.AddFields(map[string]models.FieldDefinition{
+	profile.AddFields(map[string]loader.FieldDefinition{
 		"Age":      fields.Integer{GoType: new(int16)},
 		"Gender":   fields.Selection{Selection: types.Selection{"male": "Male", "female": "Female"}},
 		"Money":    fields.Float{},
@@ -201,7 +202,7 @@ func declareModels() {
 		"Country":  fields.Char{},
 	})
 
-	post.AddFields(map[string]models.FieldDefinition{
+	post.AddFields(map[string]loader.FieldDefinition{
 		"User":            fields.Many2One{RelationModel: models.Registry.MustGet("User")},
 		"Title":           fields.Char{},
 		"Content":         fields.HTML{},
@@ -213,12 +214,12 @@ func declareModels() {
 	})
 
 	post.Methods().MustGet("Create").Extend(
-		func(rc *models.RecordCollection, data models.RecordData) *models.RecordCollection {
-			res := rc.Super().Call("Create", data).(*models.RecordCollection)
+		func(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
+			res := rc.Super().Call("Create", data).(*loader.RecordCollection)
 			return res
 		})
 
-	tag.AddFields(map[string]models.FieldDefinition{
+	tag.AddFields(map[string]loader.FieldDefinition{
 		"Name":        fields.Char{Constraint: tag.Methods().MustGet("CheckNameDescription")},
 		"BestPost":    fields.Many2One{RelationModel: models.Registry.MustGet("Post")},
 		"Posts":       fields.Many2Many{RelationModel: models.Registry.MustGet("Post")},
@@ -227,26 +228,26 @@ func declareModels() {
 		"Rate":        fields.Float{Constraint: tag.Methods().MustGet("CheckRate"), GoType: new(float32)},
 	})
 
-	cv.AddFields(map[string]models.FieldDefinition{
+	cv.AddFields(map[string]loader.FieldDefinition{
 		"Education":  fields.Text{},
 		"Experience": fields.Text{Translate: true},
 		"Leisure":    fields.Text{},
 	})
 
-	addressMI.AddFields(map[string]models.FieldDefinition{
+	addressMI.AddFields(map[string]loader.FieldDefinition{
 		"Street": fields.Char{GoType: new(string)},
 		"Zip":    fields.Char{},
 		"City":   fields.Char{},
 	})
 	profile.InheritModel(addressMI)
 
-	activeMI.AddFields(map[string]models.FieldDefinition{
+	activeMI.AddFields(map[string]loader.FieldDefinition{
 		"Active": fields.Boolean{},
 	})
 
 	models.Registry.MustGet("CommonMixin").InheritModel(activeMI)
 
-	viewModel.AddFields(map[string]models.FieldDefinition{
+	viewModel.AddFields(map[string]loader.FieldDefinition{
 		"Name": fields.Char{},
 		"City": fields.Char{},
 	})

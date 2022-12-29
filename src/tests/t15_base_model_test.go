@@ -5,9 +5,9 @@ package tests
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"github.com/hexya-erp/pool/h"
 	"github.com/hexya-erp/pool/m"
@@ -17,7 +17,7 @@ import (
 
 func TestBaseModelMethods(t *testing.T) {
 	Convey("Testing base model methods", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			userJane := h.User().Search(env, q.User().Email().Equals("jane.smith@example.com"))
 			Convey("New", func() {
 				dummyUser := h.User().NewSet(env).New(h.User().NewData().

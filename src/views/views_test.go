@@ -18,6 +18,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"encoding/xml"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
 	"github.com/beevik/etree"
@@ -224,30 +225,30 @@ func TestViews(t *testing.T) {
 		So(BootStrap, ShouldPanic)
 	})
 	Convey("Creating models and boostrap them", t, func() {
-		group := models.NewModel("Group")
-		category := models.NewModel("Category")
-		user := models.NewModel("User")
-		partner := models.NewModel("Partner")
-		user.NewMethod("OnChangeAge", func(rc *models.RecordCollection) *models.ModelData {
-			return models.NewModelData(rc.Model())
+		group := loader.NewModel("Group")
+		category := loader.NewModel("Category")
+		user := loader.NewModel("User")
+		partner := loader.NewModel("Partner")
+		user.NewMethod("OnChangeAge", func(rc *loader.RecordCollection) *loader.ModelData {
+			return loader.NewModelData(rc.Model())
 		})
-		group.AddFields(map[string]models.FieldDefinition{
+		group.AddFields(map[string]loader.FieldDefinition{
 			"Name":   fields.Char{},
 			"Active": fields.Boolean{},
 		})
-		category.AddFields(map[string]models.FieldDefinition{
+		category.AddFields(map[string]loader.FieldDefinition{
 			"Name":     fields.Char{},
 			"Color":    fields.Integer{},
 			"Sequence": fields.Integer{},
 		})
-		user.AddFields(map[string]models.FieldDefinition{
+		user.AddFields(map[string]loader.FieldDefinition{
 			"UserName": fields.Char{},
 			"Age":      fields.Integer{OnChange: models.Registry.MustGet("User").Methods().MustGet("OnChangeAge")},
 			"Groups":   fields.Many2Many{RelationModel: models.Registry.MustGet("Group")},
 			"Categories": fields.Many2Many{RelationModel: models.Registry.MustGet("Category"),
 				JSON: "category_ids"},
 		})
-		partner.AddFields(map[string]models.FieldDefinition{
+		partner.AddFields(map[string]loader.FieldDefinition{
 			"Name":        fields.Char{},
 			"Function":    fields.Char{},
 			"CompanyName": fields.Char{},
@@ -502,8 +503,8 @@ func TestViews(t *testing.T) {
 		So(userFirstView.ID, ShouldEqual, "my_id")
 	})
 	Convey("Testing default views", t, func() {
-		soModel := models.NewModel("SaleOrder")
-		soModel.AddFields(map[string]models.FieldDefinition{
+		soModel := loader.NewModel("SaleOrder")
+		soModel.AddFields(map[string]loader.FieldDefinition{
 			"Name": fields.Char{},
 		})
 		soSearch := Registry.GetFirstViewForModel("SaleOrder", ViewTypeSearch)

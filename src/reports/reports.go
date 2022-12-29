@@ -6,7 +6,7 @@ package reports
 import (
 	"errors"
 	"fmt"
-	"github.com/hexya-erp/hexya/src/models"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"sync"
 
 	"github.com/hexya-erp/hexya/src/actions"
@@ -102,7 +102,7 @@ type Report interface {
 	// ID returns the unique identifying code of this report
 	ID() string
 	// Model that this report is bound to.
-	Model() models.Modeler
+	Model() loader.Modeler
 	// Render this report.
 	Render(id int64, additionalData Data) (*Document, error)
 	// Init initializes the report. Init is called at bootstrap.

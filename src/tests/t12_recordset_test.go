@@ -15,9 +15,9 @@
 package tests
 
 import (
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"github.com/hexya-erp/pool/h"
 	"github.com/hexya-erp/pool/q"
@@ -26,7 +26,7 @@ import (
 
 func TestCreateRecordSet(t *testing.T) {
 	Convey("Test record creation", t, func() {
-		So(models.ExecuteInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.ExecuteInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Creating simple user John with no relations and checking ID", func() {
 				userJohnData := h.User().NewData().
 					SetName("John Smith").
@@ -113,7 +113,7 @@ func TestCreateRecordSet(t *testing.T) {
 	})
 	group1 := security.Registry.NewGroup("group1", "Group 1")
 	Convey("Testing access control list on creation (create only)", t, func() {
-		So(models.SimulateInNewEnvironment(2, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(2, func(env loader.Environment) {
 			security.Registry.AddMembership(2, group1)
 			Convey("Checking that user 2 cannot create records", func() {
 				userTomData := h.User().NewData().
@@ -153,7 +153,7 @@ func TestCreateRecordSet(t *testing.T) {
 
 func TestSearchRecordSet(t *testing.T) {
 	Convey("Testing search through RecordSets", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Searching User Jane", func() {
 				userJane := h.User().Search(env, q.User().Name().Equals("Jane Smith"))
 				So(userJane.Len(), ShouldEqual, 1)
@@ -172,8 +172,8 @@ func TestSearchRecordSet(t *testing.T) {
 				Convey("Reading Jane with low level getters", func() {
 					So(userJane.Get(h.User().Fields().Name()), ShouldEqual, "Jane Smith")
 					So(userJane.Get(q.User().Name()), ShouldEqual, "Jane Smith")
-					So(userJane.Get(h.User().Fields().Profile()).(models.RecordSet).Get(h.Profile().Fields().Age()), ShouldEqual, 23)
-					So(userJane.Get(q.User().Profile()).(models.RecordSet).Get(q.Profile().Age()), ShouldEqual, 23)
+					So(userJane.Get(h.User().Fields().Profile()).(loader.RecordSet).Get(h.Profile().Fields().Age()), ShouldEqual, 23)
+					So(userJane.Get(q.User().Profile()).(loader.RecordSet).Get(q.Profile().Age()), ShouldEqual, 23)
 				})
 				Convey("Reading Jane with First", func() {
 					ujData := userJane.First()
@@ -229,7 +229,7 @@ func TestSearchRecordSet(t *testing.T) {
 	})
 	group1 := security.Registry.NewGroup("group1", "Group 1")
 	Convey("Testing access control list while searching", t, func() {
-		So(models.SimulateInNewEnvironment(2, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(2, func(env loader.Environment) {
 			security.Registry.AddMembership(2, group1)
 			Convey("Checking that user 2 cannot access records", func() {
 				h.User().Methods().Search().AllowGroup(group1)
@@ -250,7 +250,7 @@ func TestSearchRecordSet(t *testing.T) {
 				users := h.User().NewSet(env).SearchAll()
 				So(users.Len(), ShouldEqual, 3)
 
-				rule := models.RecordRule{
+				rule := loader.RecordRule{
 					Name:      "jOnly",
 					Group:     group1,
 					Condition: q.User().Name().IContains("j").Condition,
@@ -258,7 +258,7 @@ func TestSearchRecordSet(t *testing.T) {
 				}
 				h.User().AddRecordRule(&rule)
 
-				notUsedRule := models.RecordRule{
+				notUsedRule := loader.RecordRule{
 					Name:      "writeRule",
 					Group:     group1,
 					Condition: q.User().Name().Equals("Nobody").Condition,
@@ -279,7 +279,7 @@ func TestSearchRecordSet(t *testing.T) {
 
 func TestAdvancedQueries(t *testing.T) {
 	Convey("Testing advanced queries on M2O relations", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			jane := h.User().Search(env, q.User().Name().Equals("Jane Smith"))
 			So(jane.Len(), ShouldEqual, 1)
 			Convey("Condition on m2o relation fields", func() {
@@ -312,7 +312,7 @@ func TestAdvancedQueries(t *testing.T) {
 		}), ShouldBeNil)
 	})
 	Convey("Testing advanced queries on O2M relations", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			jane := h.User().Search(env, q.User().Name().Equals("Jane Smith"))
 			So(jane.Len(), ShouldEqual, 1)
 			Convey("Conditions on o2m relation", func() {
@@ -340,7 +340,7 @@ func TestAdvancedQueries(t *testing.T) {
 		}), ShouldBeNil)
 	})
 	Convey("Testing advanced queries on M2M relations", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			post1 := h.Post().Search(env, q.Post().Title().Equals("1st Post"))
 			So(post1.Len(), ShouldEqual, 1)
 			post2 := h.Post().Search(env, q.Post().Title().Equals("2nd Post"))
@@ -373,7 +373,7 @@ func TestAdvancedQueries(t *testing.T) {
 
 func TestUpdateRecordSet(t *testing.T) {
 	Convey("Testing updates through RecordSets", t, func() {
-		So(models.ExecuteInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.ExecuteInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Checking ModelData methods", func() {
 				johnValues := h.User().NewData().
 					SetEmail("jsmith2@example.com").
@@ -389,7 +389,7 @@ func TestUpdateRecordSet(t *testing.T) {
 				So(jv2.HasNums(), ShouldBeTrue)
 			})
 			Convey("Checking FieldMap conversion to ModelData", func() {
-				fm := models.FieldMap{
+				fm := loader.FieldMap{
 					"Email": "jsmith2@example.com",
 					"Nums":  13,
 				}
@@ -532,7 +532,7 @@ func TestUpdateRecordSet(t *testing.T) {
 	})
 	group1 := security.Registry.NewGroup("group1", "Group 1")
 	Convey("Testing access control list on update (write only)", t, func() {
-		So(models.SimulateInNewEnvironment(2, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(2, func(env loader.Environment) {
 			security.Registry.AddMembership(2, group1)
 			Convey("Checking that user 2 cannot update records", func() {
 				h.User().Methods().Load().AllowGroup(group1)
@@ -574,7 +574,7 @@ func TestUpdateRecordSet(t *testing.T) {
 				userJane := h.User().NewSet(env).SearchAll()
 				So(userJane.Len(), ShouldEqual, 3)
 
-				rule := models.RecordRule{
+				rule := loader.RecordRule{
 					Name:      "jOnly",
 					Group:     group1,
 					Condition: q.User().Name().IContains("j").Condition,
@@ -582,7 +582,7 @@ func TestUpdateRecordSet(t *testing.T) {
 				}
 				h.User().AddRecordRule(&rule)
 
-				notUsedRule := models.RecordRule{
+				notUsedRule := loader.RecordRule{
 					Name:      "unlinkRule",
 					Group:     group1,
 					Condition: q.User().Name().Equals("Nobody").Condition,
@@ -609,7 +609,7 @@ func TestUpdateRecordSet(t *testing.T) {
 
 func TestDeleteRecordSet(t *testing.T) {
 	Convey("Delete user John Smith", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Number of deleted record should be 1", func() {
 				users := h.User().Search(env, q.User().Name().Equals("John Smith"))
 				num := users.Unlink()
@@ -634,7 +634,7 @@ func TestDeleteRecordSet(t *testing.T) {
 	})
 	group1 := security.Registry.NewGroup("group1", "Group 1")
 	Convey("Checking unlink access permissions", t, func() {
-		So(models.SimulateInNewEnvironment(2, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(2, func(env loader.Environment) {
 			security.Registry.AddMembership(2, group1)
 			Convey("Checking that user 2 cannot unlink records", func() {
 				h.User().Methods().Load().AllowGroup(group1)
@@ -656,7 +656,7 @@ func TestDeleteRecordSet(t *testing.T) {
 			})
 			Convey("Checking record rules", func() {
 
-				rule := models.RecordRule{
+				rule := loader.RecordRule{
 					Name:      "jOnly",
 					Group:     group1,
 					Condition: q.User().Name().IContains("j").Condition,
@@ -664,7 +664,7 @@ func TestDeleteRecordSet(t *testing.T) {
 				}
 				h.User().AddRecordRule(&rule)
 
-				notUsedRule := models.RecordRule{
+				notUsedRule := loader.RecordRule{
 					Name:      "writeRule",
 					Group:     group1,
 					Condition: q.User().Name().Equals("Nobody").Condition,

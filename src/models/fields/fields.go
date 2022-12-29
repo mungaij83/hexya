@@ -5,10 +5,10 @@ package fields
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"log"
 	"sort"
 
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/types"
 	"github.com/hexya-erp/hexya/src/models/types/dates"
@@ -19,7 +19,7 @@ import (
 // A FieldDefinition is a struct that declares a new field in a fields collection;
 type FieldDefinition interface {
 	// DeclareField creates a field for the given FieldsCollection with the given name and returns the created field.
-	DeclareField(*models.FieldsCollection, string) *models.Field
+	DeclareField(*loader.FieldsCollection, string) *loader.Field
 }
 
 // A Binary is a field for storing binary data, such as images.
@@ -35,28 +35,28 @@ type Binary struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
 	GoType          interface{}
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a binary field for the given models.FieldsCollection with the given name.
-func (bf Binary) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	return models.CreateFieldFromStruct(fc, &bf, name, fieldtype.Binary, new(string))
+func (bf Binary) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	return loader.CreateFieldFromStruct(fc, &bf, name, fieldtype.Binary, new(string))
 }
 
 // A Boolean is a field for storing true/false values.
@@ -69,31 +69,31 @@ type Boolean struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
 	GoType          interface{}
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a boolean field for the given models.FieldsCollection with the given name.
-func (bf Boolean) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
+func (bf Boolean) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
 	if bf.Default == nil {
-		bf.Default = models.DefaultValue(false)
+		bf.Default = loader.DefaultValue(false)
 	}
-	return models.CreateFieldFromStruct(fc, &bf, name, fieldtype.Boolean, new(bool))
+	return loader.CreateFieldFromStruct(fc, &bf, name, fieldtype.Boolean, new(bool))
 }
 
 // A Char is a field for storing short text. There is no
@@ -107,30 +107,30 @@ type Char struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
 	Size            int
 	GoType          interface{}
 	Translate       bool
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a char field for the given models.FieldsCollection with the given name.
-func (cf Char) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &cf, name, fieldtype.Char, new(string))
+func (cf Char) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &cf, name, fieldtype.Char, new(string))
 	fInfo.SetProperty("size", cf.Size)
 	return fInfo
 }
@@ -145,29 +145,29 @@ type Date struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	GroupOperator   string
 	NoCopy          bool
 	GoType          interface{}
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a date field for the given models.FieldsCollection with the given name.
-func (df Date) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &df, name, fieldtype.Date, new(dates.Date))
+func (df Date) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &df, name, fieldtype.Date, new(dates.Date))
 	fInfo.SetProperty("groupOperator", strutils.GetDefaultString(df.GroupOperator, "sum"))
 	return fInfo
 }
@@ -182,29 +182,29 @@ type DateTime struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	GroupOperator   string
 	NoCopy          bool
 	GoType          interface{}
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a datetime field for the given models.FieldsCollection with the given name.
-func (df DateTime) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &df, name, fieldtype.DateTime, new(dates.DateTime))
+func (df DateTime) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &df, name, fieldtype.DateTime, new(dates.DateTime))
 	fInfo.SetProperty("groupOperator", strutils.GetDefaultString(df.GroupOperator, "sum"))
 	return fInfo
 }
@@ -217,33 +217,33 @@ type Float struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	GroupOperator   string
 	NoCopy          bool
 	Digits          nbutils.Digits
 	GoType          interface{}
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField adds this datetime field for the given models.FieldsCollection with the given name.
-func (ff Float) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
+func (ff Float) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
 	if ff.Default == nil {
-		ff.Default = models.DefaultValue(0)
+		ff.Default = loader.DefaultValue(0)
 	}
-	fInfo := models.CreateFieldFromStruct(fc, &ff, name, fieldtype.Float, new(float64))
+	fInfo := loader.CreateFieldFromStruct(fc, &ff, name, fieldtype.Float, new(float64))
 	fInfo.SetProperty("groupOperator", strutils.GetDefaultString(ff.GroupOperator, "sum"))
 	fInfo.SetProperty("digits", ff.Digits)
 	return fInfo
@@ -259,30 +259,30 @@ type HTML struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
 	Size            int
 	GoType          interface{}
 	Translate       bool
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a html field for the given models.FieldsCollection with the given name.
-func (tf HTML) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &tf, name, fieldtype.HTML, new(string))
+func (tf HTML) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &tf, name, fieldtype.HTML, new(string))
 	fInfo.SetProperty("size", tf.Size)
 	return fInfo
 }
@@ -295,32 +295,32 @@ type Integer struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	GroupOperator   string
 	NoCopy          bool
 	GoType          interface{}
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a datetime field for the given models.FieldsCollection with the given name.
-func (i Integer) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
+func (i Integer) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
 	if i.Default == nil {
-		i.Default = models.DefaultValue(0)
+		i.Default = loader.DefaultValue(0)
 	}
-	fInfo := models.CreateFieldFromStruct(fc, &i, name, fieldtype.Integer, new(int64))
+	fInfo := loader.CreateFieldFromStruct(fc, &i, name, fieldtype.Integer, new(int64))
 	fInfo.SetProperty("groupOperator", strutils.GetDefaultString(i.GroupOperator, "sum"))
 	return fInfo
 }
@@ -335,30 +335,30 @@ type Many2Many struct {
 	Stored           bool
 	Required         bool
 	ReadOnly         bool
-	RequiredFunc     func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc     func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc    func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc     func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc     func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc    func(loader.Environment) (bool, loader.Conditioner)
 	Index            bool
-	Compute          models.Methoder
+	Compute          loader.Methoder
 	Depends          []string
 	Related          string
 	NoCopy           bool
-	RelationModel    models.Modeler
+	RelationModel    loader.Modeler
 	M2MLinkModelName string
 	M2MOurField      string
 	M2MTheirField    string
-	OnChange         models.Methoder
-	OnChangeWarning  models.Methoder
-	OnChangeFilters  models.Methoder
-	Constraint       models.Methoder
-	Filter           models.Conditioner
-	Inverse          models.Methoder
-	Default          func(models.Environment) interface{}
+	OnChange         loader.Methoder
+	OnChangeWarning  loader.Methoder
+	OnChangeFilters  loader.Methoder
+	Constraint       loader.Methoder
+	Filter           loader.Conditioner
+	Inverse          loader.Methoder
+	Default          func(loader.Environment) interface{}
 }
 
 // DeclareField creates a many2many field for the given models.FieldsCollection with the given name.
-func (mf Many2Many) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &mf, name, fieldtype.Many2Many, new([]int64))
+func (mf Many2Many) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &mf, name, fieldtype.Many2Many, new([]int64))
 	our := mf.M2MOurField
 	if our == "" {
 		our = fc.Model().Name()
@@ -378,15 +378,16 @@ func (mf Many2Many) DeclareField(fc *models.FieldsCollection, name string) *mode
 	if m2mRelModName == "" {
 		m2mRelModName = fmt.Sprintf("%s%sRel", modelNames[0], modelNames[1])
 	}
-	m2mRelModel, m2mOurField, m2mTheirField := models.CreateM2MRelModelInfo(m2mRelModName, fc.Model().Name(), mf.RelationModel.Underlying().Name(), our, their, fc.Model().IsMixin())
+	// Todo: load model defination
+	//m2mRelModel, m2mOurField, m2mTheirField := models.CreateM2MRelModelInfo(m2mRelModName, fc.Model().Name(), mf.RelationModel.Underlying().Name(), our, their, fc.Model().IsMixin())
 
 	if mf.Filter != nil {
 		fInfo.SetProperty("filter", mf.Filter.Underlying())
 	}
 	fInfo.SetProperty("relationModel", mf.RelationModel.Underlying())
-	fInfo.SetProperty("m2mRelModel", m2mRelModel)
-	fInfo.SetProperty("m2mOurField", m2mOurField)
-	fInfo.SetProperty("m2mTheirField", m2mTheirField)
+	//fInfo.SetProperty("m2mRelModel", m2mRelModel)
+	//fInfo.SetProperty("m2mOurField", m2mOurField)
+	//fInfo.SetProperty("m2mTheirField", m2mTheirField)
 	return fInfo
 }
 
@@ -401,38 +402,38 @@ type Many2One struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
-	RelationModel   models.Modeler
+	RelationModel   loader.Modeler
 	Embed           bool
-	OnDelete        models.OnDeleteAction
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Filter          models.Conditioner
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnDelete        loader.OnDeleteAction
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Filter          loader.Conditioner
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a many2one field for the given models.FieldsCollection with the given name.
-func (mf Many2One) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &mf, name, fieldtype.Many2One, new(int64))
-	onDelete := models.SetNull
+func (mf Many2One) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &mf, name, fieldtype.Many2One, new(int64))
+	onDelete := loader.SetNull
 	if mf.OnDelete != "" {
 		onDelete = mf.OnDelete
 	}
 	noCopy := mf.NoCopy
 	required := mf.Required
 	if mf.Embed {
-		onDelete = models.Cascade
+		onDelete = loader.Cascade
 		noCopy = true
 		required = false
 	}
@@ -457,28 +458,28 @@ type One2Many struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	Copy            bool
-	RelationModel   models.Modeler
+	RelationModel   loader.Modeler
 	ReverseFK       string
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Filter          models.Conditioner
-	Inverse         models.Methoder
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Filter          loader.Conditioner
+	Inverse         loader.Methoder
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a one2many field for the given models.FieldsCollection with the given name.
-func (of One2Many) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &of, name, fieldtype.One2Many, new([]int64))
+func (of One2Many) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &of, name, fieldtype.One2Many, new([]int64))
 	if of.Filter != nil {
 		fInfo.SetProperty("filter", of.Filter.Underlying())
 	}
@@ -503,38 +504,38 @@ type One2One struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
-	RelationModel   models.Modeler
+	RelationModel   loader.Modeler
 	Embed           bool
-	OnDelete        models.OnDeleteAction
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Filter          models.Conditioner
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnDelete        loader.OnDeleteAction
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Filter          loader.Conditioner
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a one2one field for the given models.FieldsCollection with the given name.
-func (of One2One) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &of, name, fieldtype.One2One, new(int64))
-	onDelete := models.SetNull
+func (of One2One) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &of, name, fieldtype.One2One, new(int64))
+	onDelete := loader.SetNull
 	if of.OnDelete != "" {
 		onDelete = of.OnDelete
 	}
 	noCopy := of.NoCopy
 	required := of.Required
 	if of.Embed {
-		onDelete = models.Cascade
+		onDelete = loader.Cascade
 		required = false
 		noCopy = true
 	}
@@ -560,28 +561,28 @@ type Rev2One struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	Copy            bool
-	RelationModel   models.Modeler
+	RelationModel   loader.Modeler
 	ReverseFK       string
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Filter          models.Conditioner
-	Inverse         models.Methoder
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Filter          loader.Conditioner
+	Inverse         loader.Methoder
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a rev2one field for the given models.FieldsCollection with the given name.
-func (rf Rev2One) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &rf, name, fieldtype.Rev2One, new(int64))
+func (rf Rev2One) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &rf, name, fieldtype.Rev2One, new(int64))
 	if rf.Filter != nil {
 		fInfo.SetProperty("filter", rf.Filter.Underlying())
 	}
@@ -603,29 +604,29 @@ type Selection struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
 	Selection       types.Selection
 	SelectionFunc   func() types.Selection
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a selection field for the given models.FieldsCollection with the given name.
-func (sf Selection) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &sf, name, fieldtype.Selection, new(string))
+func (sf Selection) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &sf, name, fieldtype.Selection, new(string))
 	fInfo.SetProperty("selection", sf.Selection)
 	fInfo.SetProperty("selectionFunc", sf.SelectionFunc)
 	return fInfo
@@ -642,30 +643,30 @@ type Text struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(models.Environment) (bool, models.Conditioner)
-	ReadOnlyFunc    func(models.Environment) (bool, models.Conditioner)
-	InvisibleFunc   func(models.Environment) (bool, models.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
 	Unique          bool
 	Index           bool
-	Compute         models.Methoder
+	Compute         loader.Methoder
 	Depends         []string
 	Related         string
 	NoCopy          bool
 	Size            int
 	GoType          interface{}
 	Translate       bool
-	OnChange        models.Methoder
-	OnChangeWarning models.Methoder
-	OnChangeFilters models.Methoder
-	Constraint      models.Methoder
-	Inverse         models.Methoder
-	Contexts        models.FieldContexts
-	Default         func(models.Environment) interface{}
+	OnChange        loader.Methoder
+	OnChangeWarning loader.Methoder
+	OnChangeFilters loader.Methoder
+	Constraint      loader.Methoder
+	Inverse         loader.Methoder
+	Contexts        loader.FieldContexts
+	Default         func(loader.Environment) interface{}
 }
 
 // DeclareField creates a text field for the given models.FieldsCollection with the given name.
-func (tf Text) DeclareField(fc *models.FieldsCollection, name string) *models.Field {
-	fInfo := models.CreateFieldFromStruct(fc, &tf, name, fieldtype.Text, new(string))
+func (tf Text) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
+	fInfo := loader.CreateFieldFromStruct(fc, &tf, name, fieldtype.Text, new(string))
 	fInfo.SetProperty("size", tf.Size)
 	return fInfo
 }

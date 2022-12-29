@@ -15,9 +15,9 @@
 package tests
 
 import (
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"github.com/hexya-erp/pool/h"
 	"github.com/hexya-erp/pool/m"
@@ -27,7 +27,7 @@ import (
 
 func TestMethods(t *testing.T) {
 	Convey("Testing simple methods", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Getting all users and calling `PrefixedUser`", func() {
 				users := h.User().Search(env, q.User().Email().Equals("jane.smith@example.com"))
 				res := users.PrefixedUser("Prefix")
@@ -45,7 +45,7 @@ func TestMethods(t *testing.T) {
 
 func TestComputedNonStoredFields(t *testing.T) {
 	Convey("Testing non stored computed fields", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Getting one user (Jane) and checking DisplayName", func() {
 				users := h.User().Search(env, q.User().Email().Equals("jane.smith@example.com"))
 				So(users.DecoratedName(), ShouldEqual, "User: Jane A. Smith [<jane.smith@example.com>]")
@@ -69,7 +69,7 @@ func TestComputedNonStoredFields(t *testing.T) {
 
 func TestComputedStoredFields(t *testing.T) {
 	Convey("Testing stored computed fields", t, func() {
-		So(models.ExecuteInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.ExecuteInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Checking that user Jane is 23", func() {
 				userJane := h.User().Search(env, q.User().Email().Equals("jane.smith@example.com"))
 				So(userJane.Age(), ShouldEqual, 23)
@@ -134,7 +134,7 @@ func TestComputedStoredFields(t *testing.T) {
 
 func TestRelatedNonStoredFields(t *testing.T) {
 	Convey("Testing non stored related fields", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Checking that users PMoney is correct", func() {
 				userJohn := h.User().Search(env, q.User().Name().Equals("John Smith"))
 				So(userJohn.Len(), ShouldEqual, 1)
@@ -205,7 +205,7 @@ func TestRelatedNonStoredFields(t *testing.T) {
 
 func TestEmbeddedModels(t *testing.T) {
 	Convey("Testing embedded models", t, func() {
-		So(models.ExecuteInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.ExecuteInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			userJane := h.User().Search(env, q.User().Email().Equals("jane.smith@example.com"))
 			Convey("Checking that Jane's resume exists", func() {
 				So(userJane.Resume().IsEmpty(), ShouldBeFalse)
@@ -231,7 +231,7 @@ func TestEmbeddedModels(t *testing.T) {
 
 func TestMixedInModels(t *testing.T) {
 	Convey("Testing mixed in models", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Checking that mixed in functions are correctly inherited", func() {
 				janeProfile := h.User().Search(env, q.User().Email().Equals("jane.smith@example.com")).Profile()
 				So(janeProfile.PrintAddress(), ShouldEqual, "[<165 5th Avenue, 0305 New York>, USA]")
@@ -253,8 +253,8 @@ func TestMixedInModels(t *testing.T) {
 
 func TestInvalidRecordSets(t *testing.T) {
 	Convey("Testing Invalid Recordsets", t, func() {
-		So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
-			rc := models.InvalidRecordCollection("User")
+		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
+			rc := loader.InvalidRecordCollection("User")
 			rs := rc.Wrap("User").(m.UserSet)
 			Convey("Getting a field on an invalid RecordSet should return empty value", func() {
 				So(rs.Name(), ShouldEqual, "")

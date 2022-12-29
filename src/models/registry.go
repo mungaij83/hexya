@@ -15,12 +15,10 @@
 package models
 
 import (
-	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
+	"github.com/hexya-erp/hexya/src/tools/strutils"
 	"sync"
 	"time"
-
-	"github.com/hexya-erp/hexya/src/models/security"
-	"github.com/hexya-erp/hexya/src/tools/strutils"
 )
 
 // transientModelTimeout is the timeout after which transient model
@@ -30,9 +28,6 @@ var transientModelTimeout = 30 * time.Minute
 // Registry is the registry of all Model instances.
 var Registry *modelCollection
 
-// Option describes a optional feature of a model
-type Option int
-
 type modelCollection struct {
 	sync.RWMutex
 	bootstrapped        bool
@@ -41,7 +36,7 @@ type modelCollection struct {
 }
 
 // Get the given Model by name or by table name
-func (mc *modelCollection) Get(nameOrJSON string) (mi *Model, ok bool) {
+func (mc *modelCollection) Get(nameOrJSON string) (mi *loader.Model, ok bool) {
 	repo, ok := mc.registryByTableName[nameOrJSON]
 	if !ok {
 		return nil, false
@@ -52,7 +47,7 @@ func (mc *modelCollection) Get(nameOrJSON string) (mi *Model, ok bool) {
 
 // MustGet the given Model by name or by table name.
 // It panics if the Model does not exist
-func (mc *modelCollection) MustGet(nameOrJSON string) *Model {
+func (mc *modelCollection) MustGet(nameOrJSON string) *loader.Model {
 	mi, ok := mc.Get(nameOrJSON)
 	if !ok {
 		log.Panic("Unknown model", "model", nameOrJSON)
@@ -107,100 +102,5 @@ func newModelCollection() *modelCollection {
 	return &modelCollection{
 		registryByTableName: make(map[string]Repository[any, int64]),
 		sequences:           make(map[string]*Sequence),
-	}
-}
-
-// A Sequence holds the metadata of a DB sequence
-//
-// There are two types of sequences: those created before bootstrap
-// and those created after. The former will be created and updated at
-// bootstrap and cannot be modified afterwards. The latter will be
-// created, updated or dropped immediately.
-type Sequence struct {
-	JSON      string
-	Increment int64
-	Start     int64
-	boot      bool
-}
-
-// CreateSequence creates a new Sequence in the database and returns a pointer to it
-func CreateSequence(name string, increment, start int64) *Sequence {
-	var boot bool
-	suffix := "manseq"
-	if !Registry.bootstrapped {
-		boot = true
-		suffix = "bootseq"
-	}
-	json := fmt.Sprintf("%s_%s", strutils.SnakeCase(name), suffix)
-	seq := &Sequence{
-		JSON:      json,
-		Increment: increment,
-		Start:     start,
-		boot:      boot,
-	}
-	if !boot {
-		// Create the sequence on the fly if we already bootstrapped.
-		// Otherwise, this will be done in Bootstrap
-		adapters[connParams.Driver].createSequence(seq.JSON, seq.Increment, seq.Start)
-	}
-	Registry.addSequence(seq)
-	return seq
-}
-
-// Drop this sequence and removes it from the database
-func (s *Sequence) Drop() {
-	Registry.Lock()
-	defer Registry.Unlock()
-	delete(Registry.sequences, s.JSON)
-	if Registry.bootstrapped {
-		// Drop the sequence on the fly if we already bootstrapped.
-		// Otherwise, this will be done in Bootstrap
-		if s.boot {
-			log.Panic("Boot Sequences cannot be dropped after bootstrap")
-		}
-		adapters[connParams.Driver].dropSequence(s.JSON)
-	}
-}
-
-// Alter alters this sequence by changing next number and/or increment.
-// Set a parameter to 0 to leave it unchanged.
-func (s *Sequence) Alter(increment, restart int64) {
-	var boot bool
-	if !Registry.bootstrapped {
-		boot = true
-	}
-	if s.boot && !boot {
-		log.Panic("Boot Sequences cannot be modified after bootstrap")
-	}
-	if restart > 0 {
-		s.Start = restart
-	}
-	if increment > 0 {
-		s.Increment = increment
-	}
-	if !boot {
-		adapters[connParams.Driver].alterSequence(s.JSON, increment, restart)
-	}
-}
-
-// NextValue returns the next value of this Sequence
-func (s *Sequence) NextValue() int64 {
-	adapter := adapters[connParams.Driver]
-	return adapter.nextSequenceValue(s.JSON)
-}
-
-// FreeTransientModels remove transient models records from database which are
-// older than the given timeout.
-func FreeTransientModels() {
-	for _, model := range Registry.registryByTableName {
-		if model.IsTransient() {
-			err := ExecuteInNewEnvironment(security.SuperUserID, func(env Environment) {
-				//createDate := model.FieldName("CreateDate")
-				//model.Search(env, model.GetField(createDate).Lower(dates.Now().Add(-transientModelTimeout))).Call("Unlink")
-			})
-			if err != nil {
-				log.Warn("Failed to free transient models")
-			}
-		}
 	}
 }

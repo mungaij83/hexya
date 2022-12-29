@@ -15,7 +15,7 @@
 package testmodule
 
 import (
-	"github.com/hexya-erp/hexya/src/models"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"github.com/hexya-erp/hexya/src/server"
 )
@@ -29,7 +29,7 @@ func init() {
 	server.RegisterModule(&server.Module{
 		Name: MODULE_NAME,
 		PostInit: func() {
-			models.ExecuteInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+			loader.ExecuteInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 				env.Cr().Execute(`DROP VIEW IF EXISTS user_view;
 					CREATE VIEW user_view AS (
 						SELECT u.id, u.name, p.city, u.active

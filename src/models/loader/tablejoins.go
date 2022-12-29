@@ -12,27 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package models
+package loader
 
 import (
-	"github.com/hexya-erp/hexya/src/models/loader"
-	"github.com/hexya-erp/hexya/src/tools/logging"
+	"fmt"
 )
 
-var (
-	log logging.Logger
-	// Views is a map to store views created automatically.
-	// It will be processed by the views package and added to the views registry.
-	Views map[*loader.Model][]string
-)
+// tableJoin represents a join in a SQL query
+// tableName should be escaped already in the struct
+type tableJoin struct {
+	tableName  string
+	joined     bool
+	field      FieldName
+	otherTable *tableJoin
+	otherField FieldName
+	alias      string
+	expr       FieldName
+}
 
-func init() {
-	log = logging.GetLogger("models")
-	// model registry
-	Registry = newModelCollection()
-	loader.RegisterModelLoader(func(name string) *loader.Model {
-		return Registry.MustGet(name)
-	})
-	Views = make(map[*loader.Model][]string)
-
+// sqlString returns the sql string for the tableJoin Clause
+func (t tableJoin) sqlString() string {
+	if !t.joined {
+		return fmt.Sprintf("%s %s ", t.tableName, t.alias)
+	}
+	return fmt.Sprintf("LEFT JOIN %s %s ON %s.%s=%s.%s ", t.tableName, t.alias, t.otherTable.alias,
+		t.otherField.JSON(), t.alias, t.field.JSON())
 }

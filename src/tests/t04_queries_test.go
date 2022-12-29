@@ -15,9 +15,9 @@
 package tests
 
 import (
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"github.com/hexya-erp/pool/h"
 	"github.com/hexya-erp/pool/q"
@@ -27,14 +27,14 @@ import (
 func TestConditions(t *testing.T) {
 	Convey("Testing SQL building for queries", t, func() {
 		if driver == "postgres" {
-			So(models.SimulateInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+			So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 				rs := h.User().NewSet(env)
 				rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().BestPostFilteredOn(q.Post().Title().Equals("foo"))))
 				Convey("Simple query", func() {
 					So(func() { rs.Load() }, ShouldNotPanic)
 				})
 				Convey("Simple query with args inflation", func() {
-					getUserID := func(rs models.RecordSet) int {
+					getUserID := func(rs loader.RecordSet) int {
 						return int(rs.Env().Uid())
 					}
 					rs2 := h.User().Search(env, q.User().Nums().EqualsFunc(getUserID))

@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -123,7 +124,7 @@ func setupDebug() {
 
 // connectToDB creates the connection to the database
 func connectToDB() {
-	models.DBConnect(models.ConnectionParams{
+	loader.DBConnect(loader.ConnectionParams{
 		Driver:   viper.GetString("DB.Driver"),
 		Host:     viper.GetString("DB.Host"),
 		Port:     viper.GetString("DB.Port"),

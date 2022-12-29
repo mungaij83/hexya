@@ -17,6 +17,7 @@ package actions
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
 	"github.com/hexya-erp/hexya/src/models"
@@ -55,13 +56,13 @@ var viewDef1 = `
 
 func TestActions(t *testing.T) {
 	Convey("Creating models", t, func() {
-		user := models.NewModel("User")
-		partner := models.NewModel("Partner")
-		user.AddFields(map[string]models.FieldDefinition{
+		user := loader.NewModel("User")
+		partner := loader.NewModel("Partner")
+		user.AddFields(map[string]loader.FieldDefinition{
 			"UserName": fields.Char{},
 			"Age":      fields.Integer{},
 		})
-		partner.AddFields(map[string]models.FieldDefinition{
+		partner.AddFields(map[string]loader.FieldDefinition{
 			"Name": fields.Char{},
 		})
 		models.BootStrap()

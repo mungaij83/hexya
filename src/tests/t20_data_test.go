@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
 	"github.com/hexya-erp/hexya/src/models"
@@ -15,7 +16,7 @@ import (
 
 func TestDataLoading(t *testing.T) {
 	Convey("Testing CSV data loading into database", t, func() {
-		So(models.ExecuteInNewEnvironment(security.SuperUserID, func(env models.Environment) {
+		So(loader.ExecuteInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
 			Convey("Simple import of users - no update", func() {
 				models.LoadCSVDataFile("testdata/User.csv")
 				users := h.User().NewSet(env).SearchAll()

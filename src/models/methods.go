@@ -31,7 +31,7 @@ var unauthorizedMethods = map[string]bool{
 
 // A MethodsCollection is a collection of methods for use in a model
 type MethodsCollection struct {
-	model        *Model[any]
+	model        *Model
 	registry     map[string]*Method
 	bootstrapped bool
 }
@@ -48,7 +48,7 @@ func (mc *MethodsCollection) get(methodName string) (*Method, bool, bool) {
 		if mc.bootstrapped {
 			return nil, false, false
 		}
-		// We have not bootstrapped yet
+		// We have not bootstrapped the function
 		// We didn't find the method, but maybe it exists in mixins
 		meth, found := mc.model.findMethodInMixin(methodName)
 		if !found {
@@ -133,7 +133,7 @@ type callerGroup struct {
 type Method struct {
 	sync.RWMutex
 	name          string
-	model         *Model[any]
+	model         *Model
 	methodType    reflect.Type
 	topLayer      *methodLayer
 	nextLayer     map[*methodLayer]*methodLayer
@@ -192,7 +192,7 @@ func (m *Method) AllowGroup(group *security.Group, callers ...Methoder) *Method 
 
 // RevokeGroup revokes the execution permission on the method to the given group
 // if it has been given previously, otherwise does nothing.
-// Note that this methods revokes all permissions, whatever the caller.
+// Note that these methods revokes all permissions, whatever the caller.
 func (m *Method) RevokeGroup(group *security.Group) *Method {
 	m.Lock()
 	defer m.Unlock()
@@ -233,7 +233,7 @@ type methodLayer struct {
 
 // copyMethod creates a new method without any method layer for
 // the given model by taking data from the given method.
-func copyMethod(m *Model[any], method *Method) *Method {
+func copyMethod(m *Model, method *Method) *Method {
 	return &Method{
 		model:         m,
 		name:          method.name,
@@ -356,7 +356,7 @@ func (m *Model) addMethod(methodName string, fnct interface{}) *Method {
 }
 
 // NewMethod is used in modules to declare a new method for this model.
-func (m *Model[any]) NewMethod(methodName string, fnct interface{}) *Method {
+func (m *Model) NewMethod(methodName string, fnct interface{}) *Method {
 	meth, exists, inModel := m.methods.get(methodName)
 	if exists && !inModel {
 		// We are trying to add an existing mixin method as a new method
@@ -372,7 +372,7 @@ func (m *Model[any]) NewMethod(methodName string, fnct interface{}) *Method {
 
 // AddEmptyMethod creates a new method without function layer
 // The resulting method cannot be called until finalize is called
-func (m *Model[any]) AddEmptyMethod(methodName string) *Method {
+func (m *Model) AddEmptyMethod(methodName string) *Method {
 	if m.methods.bootstrapped {
 		log.Panic("Create/ExtendMethod must be run before BootStrap", "model", m.name, "method", methodName)
 	}
@@ -485,7 +485,7 @@ func checkTypesMatch(type1, type2 reflect.Type) bool {
 // findMethodInMixin recursively goes through all mixins
 // to find the method with the given name. Returns true if
 // it found one, false otherwise.
-func (m *Model[any]) findMethodInMixin(methodName string) (*Method, bool) {
+func (m *Model) findMethodInMixin(methodName string) (*Method, bool) {
 	for _, mixin := range m.mixins {
 		if method, ok := mixin.methods.Get(methodName); ok {
 			return method, true

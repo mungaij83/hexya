@@ -180,7 +180,7 @@ type Methoder interface {
 
 // A Modeler can return a Model data object through its Underlying() method
 type Modeler interface {
-	Underlying() *Model[any]
+	Underlying() *Model
 }
 
 // A Conditioner can return a Condition object through its Underlying() method
@@ -200,7 +200,7 @@ type RecordData interface {
 type ModelData struct {
 	FieldMap
 	ToCreate map[string][]*ModelData
-	Model    *Model[any]
+	Model    *Model
 }
 
 var _ RecordData = new(ModelData)
@@ -420,7 +420,7 @@ func fixFieldValue(v interface{}, fi *Field) interface{} {
 // NewModelData returns a pointer to a new instance of ModelData
 // for the given model. If FieldMaps are given they are added to
 // the ModelData.
-func NewModelData(model *Model[any], fm ...FieldMap) *ModelData {
+func NewModelData(model *Model, fm ...FieldMap) *ModelData {
 	fMap := make(FieldMap)
 	for _, f := range fm {
 		for k, v := range f {

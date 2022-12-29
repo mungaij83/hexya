@@ -41,17 +41,18 @@ type modelCollection struct {
 }
 
 // Get the given Model by name or by table name
-func (mc *modelCollection) Get(nameOrJSON string) (mi Repository[any, int64], ok bool) {
-	mi, ok = mc.registryByTableName[nameOrJSON]
+func (mc *modelCollection) Get(nameOrJSON string) (mi *Model, ok bool) {
+	repo, ok := mc.registryByTableName[nameOrJSON]
 	if !ok {
-		mi, ok = mc.registryByTableName[nameOrJSON]
+		return nil, false
 	}
+	mi, ok = repo.GetModel()
 	return
 }
 
 // MustGet the given Model by name or by table name.
 // It panics if the Model does not exist
-func (mc *modelCollection) MustGet(nameOrJSON string) Repository[any, int64] {
+func (mc *modelCollection) MustGet(nameOrJSON string) *Model {
 	mi, ok := mc.Get(nameOrJSON)
 	if !ok {
 		log.Panic("Unknown model", "model", nameOrJSON)

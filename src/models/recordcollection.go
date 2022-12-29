@@ -15,8 +15,8 @@
 package models
 
 import (
+	"database/sql"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"reflect"
 	"sort"
 	"strconv"
@@ -31,7 +31,7 @@ import (
 // RecordCollection is a generic struct representing several
 // records of a model.
 type RecordCollection struct {
-	model      Repository[any, int64]
+	model      *Model
 	query      *Query
 	env        *Environment
 	prefetchRC *RecordCollection
@@ -453,14 +453,17 @@ func (rc *RecordCollection) doUpdate(fMap FieldMap) {
 	}
 	if !rc.hasNegIds {
 		query, args := rc.query.updateQuery(fMap)
-		res := rc.env.cr.Execute(query, args...)
-		if num, _ := res.RowsAffected(); num == 0 {
+		_, num := rc.env.cr.Execute(query, args...)
+		if num == 0 {
 			log.Panic("Unexpected noop on update (num = 0)", "model", rc.ModelName(), "values", fMap, "query", query, "args", args)
 		}
 	}
 	for _, rec := range rc.Records() {
 		for k, v := range fMap {
-			rc.env.cache.updateEntry(rc.model, rec.Ids()[0], k, v, rc.query.ctxArgsSlug())
+			err := rc.env.cache.updateEntry(rc.model, rec.Ids()[0], k, v, rc.query.ctxArgsSlug())
+			if err != nil {
+				log.Warn("Failed to update cache", "error", err)
+			}
 		}
 	}
 }
@@ -676,8 +679,7 @@ func (rc *RecordCollection) unlink() int64 {
 	var num int64
 	if !rSet.hasNegIds {
 		query, args := rSet.query.deleteQuery()
-		res := rSet.env.cr.Execute(query, args...)
-		num, _ = res.RowsAffected()
+		_, num = rSet.env.cr.Execute(query, args...)
 	}
 	for _, id := range ids {
 		rc.env.cache.invalidateRecord(rc.model, id)
@@ -827,11 +829,20 @@ func (rc *RecordCollection) ForceLoad(fieldNames ...FieldName) *RecordCollection
 	rSet = rSet.substituteRelatedInQuery()
 	dbFields := filterOnDBFields(rSet.model, subFields)
 	query, args, substs := rSet.query.selectQuery(dbFields)
-	rows, cnt := dbQuery(rSet.env.cr.tx, query, args...)
-	defer rows.Close()
+	rows, _ := dbQuery(rSet.env.cr.tx, query, args...)
+	if rows == nil {
+		return nil
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Warn("Could not close cursor", "error", err)
+		}
+	}(rows)
+
 	var ids []int64
-	for _, line := range rows {
-		line := make(FieldMap)
+	for rows.Next() {
+		line := FieldMap{}
 		err := rSet.model.scanToFieldMap(rows, &line, substs)
 		if err != nil {
 			log.Panic(err.Error(), "model", rSet.ModelName(), "fields", fields)
@@ -1070,17 +1081,15 @@ func (rc *RecordCollection) Aggregates(fieldNames ...FieldName) []GroupAggregate
 
 	query, args := rSet.query.selectGroupQuery(rSet.fieldsGroupOperators(dbFields))
 	var res []GroupAggregateRow
-	rows := dbQuery(rSet.env.cr.tx, query, args...)
+	rows, cnt := dbQuery(rSet.env.cr.tx, query, args...)
 	defer rows.Close()
 
 	for rows.Next() {
-		vals := make(FieldMap)
-		err := sqlx.MapScan(rows, vals)
+		vals := FieldMap{}
+		err := rSet.model.scanToFieldMap(rows, &vals, substMap)
 		if err != nil {
 			log.Panic(err.Error(), "model", rSet.ModelName(), "fields", fields)
 		}
-		cnt := vals["__count"].(int64)
-		delete(vals, "__count")
 		vals = substituteKeys(vals, substMap)
 		line := GroupAggregateRow{
 			Values:    NewModelDataFromRS(rc, vals),

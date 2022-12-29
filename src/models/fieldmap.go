@@ -30,7 +30,7 @@ func (fm FieldMap) OrderedKeys() []string {
 }
 
 // FieldNames returns the keys of this FieldMap as FieldNames of the given model
-func (fm FieldMap) FieldNames(model *Model[any]) FieldNames {
+func (fm FieldMap) FieldNames(model *Model) FieldNames {
 	res := make(FieldNames, len(fm))
 	var i int
 	for k := range fm {
@@ -118,7 +118,7 @@ func (fm *FieldMap) Delete(field FieldName) {
 // MergeWith updates this FieldMap with the given other FieldMap
 // If a key of the other FieldMap already exists here, the value is overridden,
 // otherwise, the key is inserted with its json name.
-func (fm *FieldMap) MergeWith(other FieldMap, model *Model[any]) {
+func (fm *FieldMap) MergeWith(other FieldMap, model *Model) {
 	for field, value := range other {
 		fm.Set(model.FieldName(field), value)
 	}

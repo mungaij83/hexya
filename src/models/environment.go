@@ -41,6 +41,8 @@ type Environment struct {
 	driverName     string
 	context        *types.Context
 	cache          *cache
+	currentLayer   *methodLayer
+	previousMethod *Method
 	super          bool
 	recursions     uint8
 	nextNegativeID int64

@@ -18,8 +18,6 @@ import (
 	"reflect"
 
 	"github.com/hexya-erp/hexya/src/tools/logging"
-	"github.com/hexya-erp/hexya/src/tools/strutils"
-	"github.com/jmoiron/sqlx"
 )
 
 var (
@@ -31,7 +29,6 @@ var (
 
 func init() {
 	log = logging.GetLogger("models")
-	sqlx.NameMapper = strutils.SnakeCase
 	// DB drivers
 	adapters = make(map[string]dbAdapter)
 	registerDBAdapter("postgres", new(postgresAdapter))

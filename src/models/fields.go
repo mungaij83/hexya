@@ -55,7 +55,7 @@ const (
 // (e.g. path = "Profile.BestPost").
 // - stored is true if the computed field is stored
 type computeData struct {
-	model     *Repository[any, int64]
+	model     *Model
 	stored    bool
 	fieldName string
 	compute   string
@@ -65,7 +65,7 @@ type computeData struct {
 // FieldsCollection is a collection of Field instances in a model.
 type FieldsCollection struct {
 	sync.RWMutex
-	model                Repository[any, int64]
+	model                *Model
 	registryByName       map[string]*Field
 	registryByJSON       map[string]*Field
 	computedFields       []*Field
@@ -111,7 +111,7 @@ func (fc *FieldsCollection) storedFieldNames(fieldNames ...FieldName) []FieldNam
 			}
 		}
 		if (fi.isStored() || fi.isRelatedField()) && keepField {
-			res = append(res, fc.model.GetFieldName(fName))
+			res = append(res, fc.model.Fields().MustGet(fName))
 		}
 	}
 	return res
@@ -122,7 +122,7 @@ func (fc *FieldsCollection) allFieldNames() FieldNames {
 	res := make([]FieldName, len(fc.registryByJSON))
 	var i int
 	for f := range fc.registryByName {
-		res[i] = fc.model.GetFieldName(f)
+		res[i] = fc.model.Fields().MustGet(f)
 		i++
 	}
 	return res
@@ -149,7 +149,7 @@ func (fc *FieldsCollection) getComputedFields(fields ...string) (fil []*Field) {
 }
 
 // Model returns this FieldsCollection Model
-func (fc *FieldsCollection) Model() Repository[any, int64] {
+func (fc *FieldsCollection) Model() *Model {
 	return fc.model
 }
 
@@ -194,7 +194,7 @@ func (fc *FieldsCollection) register(fInfo *Field) {
 
 // Field holds the meta information about a field
 type Field struct {
-	model            Repository[any, int64]
+	model            *Model
 	name             string
 	json             string
 	description      string
@@ -210,10 +210,10 @@ type Field struct {
 	compute          string
 	depends          []string
 	relatedModelName string
-	relatedModel     Repository[any, int64]
+	relatedModel     *Model
 	reverseFK        string
 	jsonReverseFK    string
-	m2mRelModel      Repository[any, int64]
+	m2mRelModel      *Model
 	m2mOurField      *Field
 	m2mTheirField    *Field
 	selection        types.Selection

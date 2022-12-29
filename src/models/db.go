@@ -128,7 +128,7 @@ type Cursor struct {
 
 // Execute a query without returning any rows. It panics in case of error.
 // The args are for any placeholder parameters in the query.
-func (c *Cursor) Execute(query string, args ...interface{}) *sql.Rows {
+func (c *Cursor) Execute(query string, args ...interface{}) (*sql.Rows, int64) {
 	return dbExecute(c.tx, query, args...)
 }
 
@@ -190,12 +190,13 @@ func DBClose() {
 
 // dbExecute is a wrapper around sqlx.MustExec
 // It executes a query that returns no row
-func dbExecute(cr *gorm.DB, query string, args ...interface{}) *sql.Rows {
+func dbExecute(cr *gorm.DB, query string, args ...interface{}) (*sql.Rows, int64) {
 	query, args = sanitizeQuery(query, args...)
 	t := time.Now()
-	res, err := cr.Select(query, args...).Rows()
+	var cnt int64
+	res, err := cr.Select(query, args...).Count(&cnt).Rows()
 	logSQLResult(err, t, query, args...)
-	return res
+	return res, cnt
 }
 
 // dbExecuteNoTx simply executes the given query in the database without any transaction
@@ -250,14 +251,13 @@ func dbSelectNoTx(dest interface{}, query string, args ...interface{}) {
 // dbQuery is a wrapper around sqlx.Queryx
 // It returns a sqlx.Rowsx found by the given query and arguments
 // It panics in case of error
-func dbQuery(cr *gorm.DB, query string, args ...interface{}) ([]FieldMap, int64) {
+func dbQuery(cr *gorm.DB, query string, args ...interface{}) (*sql.Rows, int64) {
 	query, args = sanitizeQuery(query, args...)
-	dt := make([]FieldMap, 0)
 	var cnt int64
 	t := time.Now()
-	err := cr.Select(query, args...).Scan(&dt).Count(&cnt).Error
+	rows, err := cr.Select(query, args...).Count(&cnt).Rows()
 	logSQLResult(err, t, query, args)
-	return dt, cnt
+	return rows, cnt
 }
 
 // sanitizeQuery calls 'In' expansion and 'Rebind' on the given query and

@@ -30,6 +30,7 @@ type Repository[T any, K PrimaryKeys] interface {
 	Methods() *MethodsCollection
 	Fields() *FieldsCollection
 	GetFieldName(s string) FieldName
+	GetModel() (*Model, bool)
 	Roles()
 	IsMixin() bool
 	IsManual() bool
@@ -45,8 +46,7 @@ type ModelRepository[T any, K PrimaryKeys] struct {
 	env       *Environment
 	options   Option
 	tableName string
-	fields    *FieldsCollection
-	methods   *MethodsCollection
+	model     *Model
 }
 
 func (mr *ModelRepository[T, K]) validateAndInitialize(loader *loader.ModelLoader) error {
@@ -62,12 +62,14 @@ func (mr *ModelRepository[T, K]) validateAndInitialize(loader *loader.ModelLoade
 	if err != nil {
 		return err
 	}
-	mr.fields = mdl.Fields()
-	mr.methods = mdl.Methods()
+	mr.model = mdl
 	mr.options = mdl.options
 	// Resolve model table name
 	mr.tableName = mr.env.cr.tx.Unscoped().Model(new(T)).Name()
 	return nil
+}
+func (mr *ModelRepository[T, K]) GetModel() (*Model, bool) {
+	return mr.model, mr.model != nil
 }
 func (mr *ModelRepository[T, K]) setEnv(env *Environment) error {
 	if mr.env != nil {
@@ -97,15 +99,15 @@ func (mr *ModelRepository[T, K]) TableName() string {
 }
 
 func (mr *ModelRepository[T, K]) Methods() *MethodsCollection {
-	return mr.methods
+	return mr.model.Methods()
 }
 
 func (mr *ModelRepository[T, K]) Fields() *FieldsCollection {
-	return mr.fields
+	return mr.Fields()
 }
 
 func (mr *ModelRepository[T, K]) GetFieldName(s string) FieldName {
-	dd, ok := mr.fields.Get(s)
+	dd, ok := mr.model.Fields().Get(s)
 	if !ok {
 		return nil
 	}
@@ -214,6 +216,6 @@ func (mr *ModelRepository[T, K]) IsTransient() bool {
 
 // hasParentField returns true if this model is recursive and has a Parent field.
 func (mr *ModelRepository[T, K]) hasParentField() bool {
-	_, parentExists := mr.fields.Get("Parent")
+	_, parentExists := mr.Fields().Get("Parent")
 	return parentExists
 }

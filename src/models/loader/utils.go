@@ -154,7 +154,7 @@ func addIDIfNotPresent(fields []FieldName) []FieldName {
 }
 
 // getGroupCondition returns the condition to retrieve the individual aggregated rows in vals
-// knowing that they were grouped by groups and that we had the given initial condition
+// knowing that they were grouped by Groups and that we had the given initial condition
 func getGroupCondition(groups []FieldName, vals map[string]interface{}, initialCondition *Condition) *Condition {
 	res := initialCondition
 	for _, group := range groups {

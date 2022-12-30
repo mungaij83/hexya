@@ -24,6 +24,13 @@ var (
 	// Views is a map to store views created automatically.
 	// It will be processed by the views package and added to the views registry.
 	Views map[*loader.Model][]string
+	// Method that cannot be overridden
+	unauthorizedMethods = map[string]bool{
+		"Load":   true,
+		"Create": true,
+		"Write":  true,
+		"Unlink": true,
+	}
 )
 
 func init() {

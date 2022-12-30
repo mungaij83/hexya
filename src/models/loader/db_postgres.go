@@ -15,6 +15,7 @@
 package loader
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/operator"
@@ -59,8 +60,11 @@ var pgTypes = map[fieldtype.Type]string{
 }
 
 // connectionString returns the connection string for the given parameters
-func (d *postgresAdapter) connectionString(params ConnectionParams) string {
-	connectString := fmt.Sprintf("dbname=%s", params.DBName)
+func (d *postgresAdapter) connectionString(params ConnectionParams, withDb bool) string {
+	connectString := ""
+	if withDb {
+		connectString = fmt.Sprintf("dbname=%s", params.DBName)
+	}
 	if params.SSLMode != "" {
 		connectString += fmt.Sprintf(" sslmode=%s", params.SSLMode)
 	}
@@ -105,10 +109,27 @@ func (d *postgresAdapter) Connector() *DatabaseConnector {
 func (d *postgresAdapter) Connect() (rerr error) {
 	defer func() {
 		if err := recover(); err != nil {
-			rerr = err.(error)
+			var ok bool
+			rerr, ok = err.(error)
+			if !ok {
+				rerr = errors.New(err.(string))
+			}
 		}
 	}()
-	d.connector.DBConnect(d.connectionString(d.connector.DBParams()))
+	autoCreate := d.connector.connParams.AutoCreate
+	if autoCreate {
+		rerr = d.connector.DBConnect(d.connectionString(d.connector.DBParams(), false))
+
+		if !d.connector.createDatabaseIfNotExist() {
+			log.Debug("Failed to create database: ", "value", rerr)
+		} else {
+			// Close database and reconnect to the created database
+			d.connector.DBClose()
+			rerr = d.connector.DBConnect(d.connectionString(d.connector.connParams, true))
+		}
+	} else {
+		rerr = d.connector.DBConnect(d.connectionString(d.connector.DBParams(), false))
+	}
 	return
 }
 
@@ -162,7 +183,7 @@ func (d *postgresAdapter) fieldIsNotNull(fi *Field) bool {
 func (d *postgresAdapter) tables() map[string]bool {
 	var resList []string
 	query := "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')"
-	if err := d.connector.db.Select(&resList, query); err != nil {
+	if err := d.connector.DB().Select(&resList, query); err != nil {
 		log.Panic("Unable to get list of tables from database", "error", err)
 	}
 	res := make(map[string]bool, len(resList))
@@ -185,7 +206,7 @@ func (d *postgresAdapter) columns(tableName string) map[string]ColumnData {
 		WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_name = '%s'
 	`, tableName)
 	var colData []ColumnData
-	if err := d.connector.db.Select(&colData, query); err != nil {
+	if err := d.connector.DB().Select(&colData, query); err != nil {
 		log.Panic("Unable to get list of columns for table", "table", tableName, "error", err)
 	}
 	res := make(map[string]ColumnData, len(colData))
@@ -252,8 +273,9 @@ func (d *postgresAdapter) NextSequenceValue(name string) int64 {
 }
 
 // sequences returns a list of all sequences matching the given SQL pattern
-func (d *postgresAdapter) sequences(pattern string) []seqData {
+func (d *postgresAdapter) Sequences(pattern string) []seqData {
 	query := "SELECT sequence_name, start_value, increment FROM information_schema.sequences WHERE sequence_name ILIKE ?"
+	log.Info("Sequence query:", "query", query)
 	var res []seqData
 	d.connector.dbSelectNoTx(&res, query, pattern)
 	return res

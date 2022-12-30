@@ -148,13 +148,13 @@ func (rc *RecordCollection) CheckExecutionPermission(method *Method, dontPanic .
 	}
 	userGroups := security.Registry.UserGroups(rc.env.uid)
 	for group := range userGroups {
-		if method.groups[group] {
+		if method.Groups[group] {
 			return true
 		}
 		if caller == nil {
 			continue
 		}
-		if method.groupsCallers[callerGroup{caller: caller, group: group}] {
+		if method.GroupsCallers[callerGroup{Caller: caller, Group: group}] {
 			return true
 		}
 	}

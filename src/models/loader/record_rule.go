@@ -5,9 +5,9 @@ import (
 	"sync"
 )
 
-// A RecordRule allow to grant a group some permissions
+// A RecordRule allow to grant a Group some permissions
 // on a selection of records.
-// - If Global is true, then the RecordRule applies to all groups
+// - If Global is true, then the RecordRule applies to all Groups
 // - Condition is the filter to apply on the model to retrieve
 // the records on which to allow the Perms permission.
 type RecordRule struct {

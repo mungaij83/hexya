@@ -806,7 +806,7 @@ func (rc *RecordCollection) ForceLoad(fieldNames ...FieldName) *RecordCollection
 		log.Panic("Trying to load a memory RecordSet created by New", "model", rc.model, "ids", rc.ids)
 	}
 	if len(rc.query.groups) > 0 {
-		log.Panic("Trying to load a grouped query", "model", rc.model, "groups", rc.query.groups)
+		log.Panic("Trying to load a grouped query", "model", rc.model, "Groups", rc.query.groups)
 	}
 	rSet := rc
 	var prefetch bool
@@ -888,14 +888,14 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 			exprs := splitFieldNames(fName, ExprSep)
 			if len(exprs) > 1 {
 				prefix := joinFieldNames(exprs[:len(exprs)-1], ExprSep)
-				// We do not call "Load" directly to have caller method properly set
+				// We do not call "Load" directly to have Caller method properly set
 				thisRC.Call("Load", []FieldName{prefix})
 				thisRC = thisRC.Get(prefix).(RecordSet).Collection()
 			}
 			switch fi.FieldType {
 			case fieldtype.One2Many:
 				relRC := rc.env.Pool(fi.RelatedModelName)
-				// We do not call "Fetch" directly to have caller method properly set
+				// We do not call "Fetch" directly to have Caller method properly set
 				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.reverseFK)).Equals(thisRC)).Call("Fetch").(RecordSet).Collection()
 				rc.env.cache.updateEntry(rc.model, id, fName.JSON(), relRC.ids, rc.query.ctxArgsSlug())
 			case fieldtype.Many2Many:
@@ -909,7 +909,7 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 				rc.env.cache.updateEntry(rc.model, id, fName.JSON(), ids, rc.query.ctxArgsSlug())
 			case fieldtype.Rev2One:
 				relRC := rc.env.Pool(fi.RelatedModelName)
-				// We do not call "Fetch" directly to have caller method properly set
+				// We do not call "Fetch" directly to have Caller method properly set
 				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.reverseFK)).Equals(thisRC)).Call("Fetch").(RecordSet).Collection()
 				var relID int64
 				if len(relRC.ids) > 0 {
@@ -1101,7 +1101,7 @@ func (rc *RecordCollection) Aggregates(fieldNames ...FieldName) []GroupAggregate
 	return res
 }
 
-// fixGroupByOrders adds order by expressions to group by clause to have a correct query.
+// fixGroupByOrders adds order by expressions to Group by clause to have a correct query.
 // It also adds a default order to the grouped fields if it does not exist.
 func (rc *RecordCollection) fixGroupByOrders(fieldNames ...FieldName) *RecordCollection {
 	rSet := rc
@@ -1140,7 +1140,7 @@ func (rc *RecordCollection) fixGroupByOrders(fieldNames ...FieldName) *RecordCol
 	return rSet
 }
 
-// fieldsGroupOperators returns a map of fields to retrieve in a group by query.
+// fieldsGroupOperators returns a map of fields to retrieve in a Group by query.
 // The first argument is the list of fields in the map.
 // The second argument is a map that has a field as key, and sql aggregate function as value.
 func (rc *RecordCollection) fieldsGroupOperators(fields []FieldName) ([]FieldName, map[string]string) {

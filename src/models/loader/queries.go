@@ -261,7 +261,7 @@ func (q *Query) sqlCtxOrderBy() string {
 }
 
 // sqlOrderByClauseForGroupBy returns the sql string for the ORDER BY clause
-// of this Query, which should be a group by clause.
+// of this Query, which should be a Group by clause.
 func (q *Query) sqlOrderByClauseForGroupBy(aggFncts map[string]string) string {
 	resSlice := make([]string, len(q.orders))
 	for i, order := range q.orders {
@@ -427,7 +427,7 @@ func (q *Query) selectGroupQuery(fieldsList []FieldName, aggFncts map[string]str
 	if len(q.groups) == 0 {
 		log.Panic("Calling selectGroupQuery on a query without Group By clause")
 	}
-	// Recompute fieldsList, addy group bys
+	// Recompute fieldsList, addy Group bys
 	fieldExprs, _ := q.selectData(fieldsList, true)
 	fieldsList = []FieldName{}
 	for _, fe := range fieldExprs {
@@ -470,7 +470,7 @@ func (q *Query) selectData(fields []FieldName, withCtx bool) ([][]FieldName, [][
 			fieldsExprsMap[joinFieldNames(oExpr, ExprSep).JSON()] = oExpr
 		}
 	}
-	// Add 'group by' exprs removing duplicates
+	// Add 'Group by' exprs removing duplicates
 	gExprs := q.getGroupByExpressions()
 	for _, gExpr := range gExprs {
 		if _, ok := fieldsExprsMap[joinFieldNames(gExpr, ExprSep).JSON()]; !ok {
@@ -794,7 +794,7 @@ func (q *Query) getCtxOrderByExpressions() [][]FieldName {
 	return exprs
 }
 
-// getGroupByExpressions returns all expressions used in group by clause of this query.
+// getGroupByExpressions returns all expressions used in Group by clause of this query.
 func (q *Query) getGroupByExpressions() [][]FieldName {
 	var exprs [][]FieldName
 	for _, group := range q.groups {

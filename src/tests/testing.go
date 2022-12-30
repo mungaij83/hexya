@@ -5,6 +5,7 @@ package tests
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"os"
 	"path/filepath"
@@ -77,6 +78,9 @@ func InitializeTests(moduleName string) {
 	}
 	dbName := fmt.Sprintf("%s_%s_tests", prefix, moduleName)
 	debug = os.Getenv("HEXYA_DEBUG")
+	if debug == "" {
+		debug = "Yes"
+	}
 	logTests := os.Getenv("HEXYA_LOG")
 
 	viper.Set("LogLevel", "panic")
@@ -92,25 +96,25 @@ func InitializeTests(moduleName string) {
 	logging.Initialize()
 	server.PreInit()
 	adapter = loader.DBConnect(loader.ConnectionParams{
-		Driver:   driver,
-		DBName:   dbName,
-		User:     user,
-		Password: password,
-		SSLMode:  "disable",
+		Driver:     driver,
+		DBName:     dbName,
+		User:       user,
+		Debug:      true,
+		AutoCreate: true,
+		Password:   password,
+		SSLMode:    "disable",
 	})
+	if adapter == nil {
+		panic("Failed to initialize database")
+	}
 	keepDB := os.Getenv("HEXYA_KEEP_TEST_DB") != ""
 	var count int64
 	count = adapter.Connector().MustExec(fmt.Sprintf("SELECT TRUE FROM pg_database WHERE datname = '%s'", dbName))
 	if count <= 0 {
-		fmt.Println("Error: ", "value", count)
-	}
-	if count > 0 || !keepDB {
-		fmt.Println("Creating database", dbName)
-		adapter.Connector().MustExec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbName))
-		adapter.Connector().MustExec(fmt.Sprintf("CREATE DATABASE %s", dbName))
+		fmt.Printf("Error: %v=%v", "value", count)
 	}
 
-	//models.BootStrap()
+	models.BootStrap()
 	resourceDir, _ := filepath.Abs(filepath.Join(".", "res"))
 	server.ResourceDir = resourceDir
 	server.LoadInternalResources(resourceDir)

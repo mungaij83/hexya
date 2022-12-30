@@ -44,6 +44,10 @@ func (m *Model) Options() tools.Option {
 	return m.options
 }
 
+func (m *Model) Mixins() []*Model {
+	return m.mixins
+}
+
 // getRelatedModelInfo returns the Model of the related model when
 // following path.
 // - If skipLast is true, getRelatedModelInfo does not follow the last part of the path

@@ -36,6 +36,14 @@ type MethodsCollection struct {
 	bootstrapped bool
 }
 
+func (mc *MethodsCollection) Registry() []*Method {
+	methods := make([]*Method, len(mc.registry))
+	for _, mth := range mc.registry {
+		methods = append(methods, mth)
+	}
+	return methods
+}
+
 // get returns the Method with the given method name.
 //
 // The second return value is true if a method has been found.
@@ -92,7 +100,7 @@ func (mc *MethodsCollection) set(methodName string, methInfo *Method) {
 	}
 }
 
-// AllowAllToGroup grants the given group access to all the CRUD methods of this collection
+// AllowAllToGroup grants the given Group access to all the CRUD methods of this collection
 func (mc *MethodsCollection) AllowAllToGroup(group *security.Group) {
 	for mName := range unauthorizedMethods {
 		meth, exists, _ := mc.get(mName)
@@ -122,11 +130,11 @@ func newMethodsCollection() *MethodsCollection {
 	return &mc
 }
 
-// A callerGroup is the concatenation of a caller method and a security group
+// A callerGroup is the concatenation of a Caller method and a security Group
 // It is used to lookup execution permissions.
 type callerGroup struct {
-	caller *Method
-	group  *security.Group
+	Caller *Method
+	Group  *security.Group
 }
 
 // A Method is a definition of a model's method
@@ -137,8 +145,8 @@ type Method struct {
 	methodType    reflect.Type
 	topLayer      *methodLayer
 	nextLayer     map[*methodLayer]*methodLayer
-	groups        map[*security.Group]bool
-	groupsCallers map[callerGroup]bool
+	Groups        map[*security.Group]bool
+	GroupsCallers map[callerGroup]bool
 }
 
 // MethodType returns the methodType of a Method
@@ -174,32 +182,32 @@ func (m *Method) invertedLayers() []*methodLayer {
 	return layersInv
 }
 
-// AllowGroup grants the execution permission on this method to the given group
+// AllowGroup grants the execution permission on this method to the given Group
 // If callers are defined, then the permission is granted only when this method
-// is called from one of the callers, otherwise it is granted from any caller.
+// is called from one of the callers, otherwise it is granted from any Caller.
 func (m *Method) AllowGroup(group *security.Group, callers ...Methoder) *Method {
 	m.Lock()
 	defer m.Unlock()
 	if len(callers) == 0 {
-		m.groups[group] = true
+		m.Groups[group] = true
 		return m
 	}
 	for _, caller := range callers {
-		m.groupsCallers[callerGroup{caller: caller.Underlying(), group: group}] = true
+		m.GroupsCallers[callerGroup{Caller: caller.Underlying(), Group: group}] = true
 	}
 	return m
 }
 
-// RevokeGroup revokes the execution permission on the method to the given group
+// RevokeGroup revokes the execution permission on the method to the given Group
 // if it has been given previously, otherwise does nothing.
-// Note that these methods revokes all permissions, whatever the caller.
+// Note that these methods revokes all permissions, whatever the Caller.
 func (m *Method) RevokeGroup(group *security.Group) *Method {
 	m.Lock()
 	defer m.Unlock()
-	delete(m.groups, group)
-	for cg := range m.groupsCallers {
-		if cg.group == group {
-			delete(m.groupsCallers, cg)
+	delete(m.Groups, group)
+	for cg := range m.GroupsCallers {
+		if cg.Group == group {
+			delete(m.GroupsCallers, cg)
 		}
 	}
 	return m
@@ -239,8 +247,8 @@ func copyMethod(m *Model, method *Method) *Method {
 		name:          method.name,
 		methodType:    method.methodType,
 		nextLayer:     make(map[*methodLayer]*methodLayer),
-		groups:        make(map[*security.Group]bool),
-		groupsCallers: make(map[callerGroup]bool),
+		Groups:        make(map[*security.Group]bool),
+		GroupsCallers: make(map[callerGroup]bool),
 	}
 }
 
@@ -385,8 +393,8 @@ func (m *Model) AddEmptyMethod(methodName string) *Method {
 			model:         m,
 			name:          methodName,
 			nextLayer:     make(map[*methodLayer]*methodLayer),
-			groups:        make(map[*security.Group]bool),
-			groupsCallers: make(map[callerGroup]bool),
+			Groups:        make(map[*security.Group]bool),
+			GroupsCallers: make(map[callerGroup]bool),
 		}
 	}
 	m.methods.set(methodName, meth)

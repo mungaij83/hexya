@@ -150,7 +150,7 @@ func (f FieldNames) JSON() []string {
 	return res
 }
 
-// A GroupAggregateRow holds a row of results of a query with a group by clause
+// A GroupAggregateRow holds a row of results of a query with a Group by clause
 // - Values holds the values of the actual query
 // - Count is the number of lines aggregated into this one
 // - Condition can be used to query the aggregated rows separately if needed

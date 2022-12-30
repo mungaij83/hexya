@@ -31,7 +31,7 @@ func (rc *RecordCollection) addRecordRuleConditions(uid int64, perm security.Per
 			rSet = rSet.Search(rule.Condition)
 		}
 	}
-	// Add groups rules
+	// Add Groups rules
 	userGroups := security.Registry.UserGroups(uid)
 	groupCondition := newCondition()
 	for group := range userGroups {

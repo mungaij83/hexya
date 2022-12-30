@@ -16,6 +16,7 @@ package loader
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -27,16 +28,18 @@ import (
 
 // ConnectionParams are the database agnostic parameters to connect to the database
 type ConnectionParams struct {
-	Driver   string
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
-	SSLCert  string
-	SSLKey   string
-	SSLCA    string
+	Driver     string
+	Host       string
+	Port       string
+	User       string
+	Password   string
+	DBName     string
+	SSLMode    string
+	SSLCert    string
+	SSLKey     string
+	Debug      bool
+	AutoCreate bool
+	SSLCA      string
 }
 
 // A ColumnData holds information from the connector schema about one column
@@ -56,7 +59,8 @@ type seqData struct {
 
 type DbAdapter interface {
 	// connectionString returns the connection string for the given parameters
-	connectionString(ConnectionParams) string
+	// If second param is true, it includes the database name in the connection string
+	connectionString(ConnectionParams, bool) string
 	// operatorSQL returns the sql string and placeholders for the given DomainOperator
 	operatorSQL(operator.Operator, interface{}) (string, interface{})
 	// typeSQL returns the SQL type string, including columns constraints if any
@@ -94,7 +98,7 @@ type DbAdapter interface {
 	// nextSequenceValue returns the next value of the given given sequence
 	NextSequenceValue(name string) int64
 	// sequences returns a list of all sequences matching the given SQL pattern
-	sequences(pattern string) []seqData
+	Sequences(pattern string) []seqData
 	// childrenIdsQuery returns a query that finds all descendant of the given
 	// a record from table including itself. The query has a placeholder for the
 	// record's ID
@@ -132,9 +136,8 @@ func (c *Cursor) Select(dest interface{}, query string, args ...interface{}) {
 
 // newCursor returns a new connector cursor on the given database
 func newCursor(db *gorm.DB, adapter DbAdapter) *Cursor {
-	adapter.Connector().dbExecute(db, adapter.setTransactionIsolation())
 	return &Cursor{
-		tx:      db,
+		tx:      db.Begin(&sql.TxOptions{Isolation: sql.LevelSerializable, ReadOnly: false}),
 		adapter: adapter,
 	}
 }
@@ -149,7 +152,10 @@ func DBConnect(params ConnectionParams) DbAdapter {
 	adapter = &postgresAdapter{
 		connector: &connector,
 	}
-	adapter.Connect()
+	err := adapter.Connect()
+	if err != nil {
+		panic(err)
+	}
 	return adapter
 }
 
@@ -180,12 +186,21 @@ func (db *DatabaseConnector) DBParams() ConnectionParams {
 }
 
 func (db *DatabaseConnector) DB() *gorm.DB {
+	if db.connParams.Debug {
+		return db.db.Debug()
+	}
 	return db.db
 }
 
 func (db *DatabaseConnector) MustExec(query string, args ...interface{}) int64 {
 	var count int64
-	err := db.db.Exec(query, args).Count(&count).Error
+	log.Debug("Must Exec: ", "query", query, "args", args)
+	var err error
+	if len(args) > 0 {
+		err = db.DB().Exec(query, args...).Count(&count).Error
+	} else {
+		err = db.DB().Exec(query).Count(&count).Error
+	}
 	if err != nil {
 		count = -1
 	}
@@ -193,22 +208,25 @@ func (db *DatabaseConnector) MustExec(query string, args ...interface{}) int64 {
 }
 
 // DBConnect connects to a database using the given driver and arguments.
-func (db *DatabaseConnector) DBConnect(connStr string) {
+func (db *DatabaseConnector) DBConnect(connStr string) error {
 	params := db.DBParams()
 	var err error
 	dbi, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
 		log.Panic("Could not connect to database,", "driver", params.Driver, "connStr", connStr, "err", err)
+		return err
 	} else {
 		db.db = dbi
+		log.Info("Using database: ", "dbname", db.db.Name())
 		log.Info("Connected to database", "driver", params.Driver, "connStr", connStr)
 	}
+	return nil
 }
 
 // DBClose is a wrapper around sqlx.Close
 // It closes the connection to the database
 func (db *DatabaseConnector) DBClose() {
-	dbi, err := db.db.DB()
+	dbi, err := db.DB().DB()
 	if err != nil {
 		log.Info("Closed database", "error", err)
 	} else {
@@ -219,13 +237,22 @@ func (db *DatabaseConnector) DBClose() {
 	}
 }
 
+func (db *DatabaseConnector) createDatabaseIfNotExist() bool {
+	count := db.MustExec(fmt.Sprintf("SELECT TRUE FROM pg_database WHERE datname = '%s'", db.connParams.DBName))
+	if count <= 0 {
+		count = adapter.Connector().MustExec(fmt.Sprintf("CREATE DATABASE %s", db.connParams.DBName))
+	}
+	return count > 0
+}
+
 // dbExecute is a wrapper around sqlx.MustExec
 // It executes a query that returns no row
 func (db *DatabaseConnector) dbExecute(cr *gorm.DB, query string, args ...interface{}) (*sql.Rows, int64) {
 	query, args = db.sanitizeQuery(query, args...)
+	log.Debug("DB Execute: ", "query", query)
 	t := time.Now()
 	var cnt int64
-	res, err := cr.Select(query, args...).Count(&cnt).Rows()
+	res, err := cr.Exec(query, args...).Count(&cnt).Rows()
 	logSQLResult(err, t, query, args...)
 	return res, cnt
 }
@@ -234,7 +261,7 @@ func (db *DatabaseConnector) dbExecute(cr *gorm.DB, query string, args ...interf
 func (db *DatabaseConnector) dbExecuteNoTx(query string, args ...interface{}) gorm.Rows {
 	query, args = db.sanitizeQuery(query, args...)
 	t := time.Now()
-	res, err := db.db.Exec(query, args...).Rows()
+	res, err := db.DB().Exec(query, args...).Rows()
 	logSQLResult(err, t, query, args...)
 	return res
 }
@@ -255,7 +282,7 @@ func (db DatabaseConnector) dbGet(cr *gorm.DB, dest interface{}, query string, a
 func (db *DatabaseConnector) dbGetNoTx(dest interface{}, query string, args ...interface{}) {
 	query, args = db.sanitizeQuery(query, args...)
 	t := time.Now()
-	err := db.db.Exec(query, args...).Scan(dest).Error
+	err := db.DB().Exec(query, args...).Scan(dest).Error
 	logSQLResult(err, t, query, args)
 }
 
@@ -273,9 +300,9 @@ func (db *DatabaseConnector) dbSelect(cr *gorm.DB, dest interface{}, query strin
 // It gets the value of a multiple rows found by the given query and arguments
 // dest must be a slice. It panics in case of error
 func (db DatabaseConnector) dbSelectNoTx(dest interface{}, query string, args ...interface{}) {
-	query, args = db.sanitizeQuery(query, args...)
+	query, _ = db.sanitizeQuery(query, args...)
 	t := time.Now()
-	err := db.db.Select(query, args...).Scan(dest).Error
+	err := db.DB().Raw(query, args...).Scan(dest).Error
 	logSQLResult(err, t, query, args)
 }
 
@@ -304,7 +331,7 @@ func logSQLResult(err error, start time.Time, query string, args ...interface{})
 	logCtx := log.New("query", query, "args", strutils.TrimArgs(args), "duration", time.Now().Sub(start))
 	if err != nil {
 		// We don't log.Panic to keep connector error information in recovery
-		logCtx.Error("Error while executing query", "error", err)
+		logCtx.Error("Error while executing query", "error", err, "Values", args)
 		panic(err)
 	}
 	logCtx.Debug("Query executed")

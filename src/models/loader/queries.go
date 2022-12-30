@@ -147,8 +147,8 @@ func (q *Query) predicateSQLClause(p predicate) (string, SQLParams) {
 		return q.conditionSQLClause(p.cond)
 	}
 
-	fi := q.recordSet.model.getRelatedFieldInfo(joinFieldNames(p.exprs, ExprSep))
-	if fi.fieldType.IsFKRelationType() {
+	fi := q.recordSet.model.GetRelatedFieldInfo(joinFieldNames(p.exprs, ExprSep))
+	if fi.FieldType.IsFKRelationType() {
 		// If we have a relation type with a 0 as foreign key, we substitute for nil
 		if valInt, err := nbutils.CastToInteger(p.arg); err == nil && valInt == 0 {
 			p.arg = nil
@@ -201,13 +201,13 @@ func nullSQLClause(field string, op operator.Operator, fi *Field) (string, SQLPa
 		sql = fmt.Sprintf(`%s IS NULL`, field)
 		if !fi.isRelationField() {
 			sql = fmt.Sprintf(`(%s OR %s = ?)`, sql, field)
-			args = SQLParams{reflect.Zero(fi.fieldType.DefaultGoType()).Interface()}
+			args = SQLParams{reflect.Zero(fi.FieldType.DefaultGoType()).Interface()}
 		}
 	case operator.NotEquals, operator.NotContains, operator.NotIContains:
 		sql = fmt.Sprintf(`%s IS NOT NULL`, field)
 		if !fi.isRelationField() {
 			sql = fmt.Sprintf(`(%s AND %s != ?)`, sql, field)
-			args = SQLParams{reflect.Zero(fi.fieldType.DefaultGoType()).Interface()}
+			args = SQLParams{reflect.Zero(fi.FieldType.DefaultGoType()).Interface()}
 		}
 	default:
 		log.Panic("Null argument can only be used with = and != operators", "operator", op)
@@ -345,7 +345,7 @@ func (q *Query) insertQuery(data FieldMap) (string, SQLParams) {
 	)
 	for k, v := range data {
 		fi := q.recordSet.model.fields.MustGet(k)
-		if fi.fieldType.IsFKRelationType() && !fi.required {
+		if fi.FieldType.IsFKRelationType() && !fi.required {
 			if _, ok := v.(*interface{}); ok {
 				// We have a null fk field
 				continue
@@ -597,7 +597,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 		if !ok {
 			log.Panic("Unparsable Expression", "expr", joinFieldNames(fieldExprs, ExprSep))
 		}
-		if fi.relatedModel == nil || (i == exprsLen-1 && fi.fieldType.IsFKRelationType()) {
+		if fi.RelatedModel == nil || (i == exprsLen-1 && fi.FieldType.IsFKRelationType()) {
 			// Don't create an extra join if our field is not a relation field
 			// or if it is the last field of our expressions
 			break
@@ -608,11 +608,11 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 		if i < exprsLen-1 {
 			tjExpr = fieldExprs[i+1]
 		}
-		switch fi.fieldType {
+		switch fi.FieldType {
 		case fieldtype.Many2One, fieldtype.One2One:
 			field, otherField = ID, expr
 		case fieldtype.One2Many, fieldtype.Rev2One:
-			field, otherField = fi.relatedModel.FieldName(fi.reverseFK), ID
+			field, otherField = fi.RelatedModel.FieldName(fi.reverseFK), ID
 			if tjExpr == nil {
 				tjExpr = ID
 			}
@@ -638,8 +638,8 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 			}
 		}
 
-		linkedTableName := adapter.quoteTableName(fi.relatedModel.tableName)
-		alias = fmt.Sprintf("%s%s%s", alias, sqlSep, fi.relatedModel.tableName)
+		linkedTableName := adapter.quoteTableName(fi.RelatedModel.tableName)
+		alias = fmt.Sprintf("%s%s%s", alias, sqlSep, fi.RelatedModel.tableName)
 		nextTJ := tableJoin{
 			tableName:  linkedTableName,
 			joined:     true,
@@ -650,7 +650,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 			expr:       tjExpr,
 		}
 		joins = append(joins, nextTJ)
-		curMI = fi.relatedModel
+		curMI = fi.RelatedModel
 		curTJ = &nextTJ
 	}
 	return joins

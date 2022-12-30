@@ -209,8 +209,8 @@ type Field struct {
 	index            bool
 	compute          string
 	depends          []string
-	relatedModelName string
-	relatedModel     *Model
+	RelatedModelName string
+	RelatedModel     *Model
 	reverseFK        string
 	jsonReverseFK    string
 	m2mRelModel      *Model
@@ -218,7 +218,7 @@ type Field struct {
 	m2mTheirField    *Field
 	selection        types.Selection
 	selectionFunc    func() types.Selection
-	fieldType        fieldtype.Type
+	FieldType        fieldtype.Type
 	groupOperator    string
 	size             int
 	digits           nbutils.Digits
@@ -255,12 +255,12 @@ func (f *Field) isRelatedField() bool {
 func (f *Field) isRelationField() bool {
 	// We check on relatedModelName and not relatedModel to be able
 	// to use this method even if the models have not been bootstrapped yet.
-	return f.relatedModelName != ""
+	return f.RelatedModelName != ""
 }
 
 // isStored returns true if this field is stored in database
 func (f *Field) isStored() bool {
-	if f.fieldType.IsNonStoredRelationType() {
+	if f.FieldType.IsNonStoredRelationType() {
 		// reverse fields are not stored
 		return false
 	}
@@ -318,25 +318,25 @@ var _ FieldName = new(Field)
 // checkFieldInfo makes sanity checks on the given Field.
 // It panics in case of severe error and logs recoverable errors.
 func checkFieldInfo(fi *Field) {
-	if fi.fieldType.IsReverseRelationType() && fi.reverseFK == "" {
+	if fi.FieldType.IsReverseRelationType() && fi.reverseFK == "" {
 		log.Panic("'one2many' and 'rev2one' fields must define a 'ReverseFK' parameter", "model",
-			fi.model.TableName(), "field", fi.name, "type", fi.fieldType)
+			fi.model.TableName(), "field", fi.name, "type", fi.FieldType)
 	}
 
-	if fi.embed && !fi.fieldType.IsFKRelationType() {
+	if fi.embed && !fi.FieldType.IsFKRelationType() {
 		log.Warn("'Embed' should be set only on many2one or one2one fields", "model", fi.model.TableName(), "field", fi.name,
-			"type", fi.fieldType)
+			"type", fi.FieldType)
 		fi.embed = false
 	}
 
-	if fi.structField.Type == reflect.TypeOf(RecordCollection{}) && fi.relatedModel.TableName() == "" {
+	if fi.structField.Type == reflect.TypeOf(RecordCollection{}) && fi.RelatedModel.TableName() == "" {
 		log.Panic("Undefined relation model on related field", "model", fi.model.TableName(), "field", fi.name,
-			"type", fi.fieldType)
+			"type", fi.FieldType)
 	}
 
 	if fi.stored && !fi.isComputedField() {
 		log.Warn("'stored' should be set only on computed fields", "model", fi.model.TableName(), "field", fi.name,
-			"type", fi.fieldType)
+			"type", fi.FieldType)
 		fi.stored = false
 	}
 }

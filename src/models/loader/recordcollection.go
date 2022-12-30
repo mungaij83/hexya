@@ -158,7 +158,7 @@ func (rc *RecordCollection) create(data RecordData) *RecordCollection {
 	data = rc.createFKRelationRecords(data)
 
 	newData := data.Underlying().Copy()
-	rc.applyDefaults(newData, true)
+	rc.ApplyDefaults(newData, true)
 	fMap := newData.Underlying().FieldMap
 	rc.applyContexts()
 	rc.addAccessFieldsCreateData(&fMap)
@@ -193,8 +193,8 @@ func (rc *RecordCollection) create(data RecordData) *RecordCollection {
 func (rc *RecordCollection) createReverseRelationRecords(data RecordData) {
 	for f, dd := range data.Underlying().ToCreate {
 		fName := rc.model.FieldName(f)
-		fi := rc.model.getRelatedFieldInfo(fName)
-		if !fi.fieldType.IsReverseRelationType() {
+		fi := rc.model.GetRelatedFieldInfo(fName)
+		if !fi.FieldType.IsReverseRelationType() {
 			continue
 		}
 		for _, d := range dd {
@@ -209,14 +209,14 @@ func (rc *RecordCollection) createFKRelationRecords(data RecordData) *ModelData 
 	res := data.Underlying().Copy()
 	for f, dd := range data.Underlying().ToCreate {
 		fName := rc.model.FieldName(f)
-		fi := rc.model.getRelatedFieldInfo(fName)
-		if !fi.fieldType.IsFKRelationType() && fi.fieldType != fieldtype.Many2Many {
+		fi := rc.model.GetRelatedFieldInfo(fName)
+		if !fi.FieldType.IsFKRelationType() && fi.FieldType != fieldtype.Many2Many {
 			continue
 		}
-		relRS := rc.env.Pool(fi.relatedModelName)
+		relRS := rc.env.Pool(fi.RelatedModelName)
 		for _, d := range dd {
 			created := rc.createRelatedFKRecord(fi, d)
-			if fi.fieldType == fieldtype.Many2Many {
+			if fi.FieldType == fieldtype.Many2Many {
 				relRS = relRS.Union(created)
 				continue
 			}
@@ -243,11 +243,11 @@ func (rc *RecordCollection) addEmbeddedfields(fMap FieldMap) FieldMap {
 	return fMap
 }
 
-// applyDefaults adds the default values to the given ModelData values which
+// ApplyDefaults adds the default values to the given ModelData values which
 // are not already set.
 //
 // If create is true, default values are not set for computed fields.
-func (rc *RecordCollection) applyDefaults(md *ModelData, create bool) {
+func (rc *RecordCollection) ApplyDefaults(md *ModelData, create bool) {
 	defaults := rc.WithContext("hexya_ignore_computed_defaults", create).Call("DefaultGet").(RecordData).Underlying()
 	defaults.MergeWith(md)
 	*md = *defaults
@@ -322,7 +322,7 @@ func (rc *RecordCollection) addContextsFieldsValues(fMap FieldMap) FieldMap {
 	res := make(FieldMap)
 	for k, v := range fMap {
 		res[k] = v
-		fi := rc.model.getRelatedFieldInfo(rc.model.FieldName(k))
+		fi := rc.model.GetRelatedFieldInfo(rc.model.FieldName(k))
 		if fi.contexts != nil {
 			for ctxName, ctxFunc := range fi.contexts {
 				path := fmt.Sprintf("%sHexyaContexts.%s", fi.name, ctxName)
@@ -473,16 +473,16 @@ func (rc *RecordCollection) doUpdate(fMap FieldMap) {
 func (rc *RecordCollection) updateRelationFields(fMap FieldMap) {
 	rc.Fetch()
 	for field, value := range fMap {
-		fi := rc.model.getRelatedFieldInfo(rc.model.FieldName(field))
-		switch fi.fieldType {
+		fi := rc.model.GetRelatedFieldInfo(rc.model.FieldName(field))
+		switch fi.FieldType {
 		case fieldtype.One2Many:
 			// We take only the first record since updating all records
 			// will override each other
 			if rc.Len() > 1 {
 				log.Warn("Updating one2many relation on multiple record at once", "model", rc.ModelName(), "field", field)
 			}
-			curRS := rc.env.Pool(fi.relatedModelName).Search(fi.relatedModel.Field(ID).In(rc.Get(rc.model.FieldName(fi.name)).(RecordSet).Collection()))
-			newRS := rc.env.Pool(fi.relatedModelName).Search(fi.relatedModel.Field(ID).In(value.([]int64)))
+			curRS := rc.env.Pool(fi.RelatedModelName).Search(fi.RelatedModel.Field(ID).In(rc.Get(rc.model.FieldName(fi.name)).(RecordSet).Collection()))
+			newRS := rc.env.Pool(fi.RelatedModelName).Search(fi.RelatedModel.Field(ID).In(value.([]int64)))
 			// Remove ReverseFK for Records that are no longer our children
 			toRemove := curRS.Subtract(newRS)
 			if toRemove.Len() > 0 {
@@ -544,8 +544,8 @@ func (rc *RecordCollection) updateRelatedFields(fMap FieldMap) {
 			model, id, _, err := rec.env.cache.getStrictRelatedRef(rec.model, rec.ids[0], path.JSON(), rc.query.ctxArgsSlug())
 			if err != nil {
 				// Record does not exist, we create it on the fly instead of updating
-				fp := rec.model.getRelatedFieldInfo(prefix)
-				nr := rec.createRelatedRecord(prefix, NewModelDataFromRS(rec.env.Pool(fp.relatedModelName), vals))
+				fp := rec.model.GetRelatedFieldInfo(prefix)
+				nr := rec.createRelatedRecord(prefix, NewModelDataFromRS(rec.env.Pool(fp.RelatedModelName), vals))
 				rec.env.cache.setX2MValue(rec.model.name, rec.ids[0], prefix.JSON(), nr.Ids()[0], rc.query.ctxArgsSlug())
 				createdPaths[prefix.JSON()] = true
 				continue
@@ -565,7 +565,7 @@ func (rc *RecordCollection) updateRelatedFields(fMap FieldMap) {
 				continue
 			}
 			// We have no default value
-			fi := rec.model.getRelatedFieldInfo(path)
+			fi := rec.model.GetRelatedFieldInfo(path)
 			if fi.ctxType != ctxValue {
 				continue
 			}
@@ -577,8 +577,8 @@ func (rc *RecordCollection) updateRelatedFields(fMap FieldMap) {
 				"record_id": vals["record_id"],
 				field:       vals[field],
 			}
-			fp := rc.model.getRelatedFieldInfo(prefix)
-			nr := rc.createRelatedRecord(prefix, NewModelDataFromRS(rc.env.Pool(fp.relatedModelName), defVals))
+			fp := rc.model.GetRelatedFieldInfo(prefix)
+			nr := rc.createRelatedRecord(prefix, NewModelDataFromRS(rc.env.Pool(fp.RelatedModelName), defVals))
 			rc.env.cache.setX2MValue(rc.model.name, rc.ids[0], prefix.JSON(), nr.Ids()[0], "")
 		}
 	}
@@ -880,8 +880,8 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 	for _, rec := range rc.Records() {
 		id := rec.ids[0]
 		for _, fName := range fields {
-			fi := rc.model.getRelatedFieldInfo(fName)
-			if !fi.fieldType.IsNonStoredRelationType() {
+			fi := rc.model.GetRelatedFieldInfo(fName)
+			if !fi.FieldType.IsNonStoredRelationType() {
 				continue
 			}
 			thisRC := rec
@@ -892,9 +892,9 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 				thisRC.Call("Load", []FieldName{prefix})
 				thisRC = thisRC.Get(prefix).(RecordSet).Collection()
 			}
-			switch fi.fieldType {
+			switch fi.FieldType {
 			case fieldtype.One2Many:
-				relRC := rc.env.Pool(fi.relatedModelName)
+				relRC := rc.env.Pool(fi.RelatedModelName)
 				// We do not call "Fetch" directly to have caller method properly set
 				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.reverseFK)).Equals(thisRC)).Call("Fetch").(RecordSet).Collection()
 				rc.env.cache.updateEntry(rc.model, id, fName.JSON(), relRC.ids, rc.query.ctxArgsSlug())
@@ -908,7 +908,7 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 				rc.env.cr.Select(&ids, query, thisRC.ids[0])
 				rc.env.cache.updateEntry(rc.model, id, fName.JSON(), ids, rc.query.ctxArgsSlug())
 			case fieldtype.Rev2One:
-				relRC := rc.env.Pool(fi.relatedModelName)
+				relRC := rc.env.Pool(fi.RelatedModelName)
 				// We do not call "Fetch" directly to have caller method properly set
 				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.reverseFK)).Equals(thisRC)).Call("Fetch").(RecordSet).Collection()
 				var relID int64
@@ -927,11 +927,11 @@ func (rc *RecordCollection) GetField(field string) interface{} {
 // Get returns the value of the given fieldName for the first record of this RecordCollection.
 // It returns the type's zero value if the RecordCollection is empty.
 func (rc *RecordCollection) Get(fieldName FieldName) interface{} {
-	fi := rc.model.getRelatedFieldInfo(fieldName)
+	fi := rc.model.GetRelatedFieldInfo(fieldName)
 	if !rc.IsValid() {
 		res := reflect.Zero(fi.structField.Type).Interface()
 		if fi.isRelationField() {
-			res = rc.convertToRecordSet(res, fi.relatedModelName)
+			res = rc.convertToRecordSet(res, fi.RelatedModelName)
 		}
 		return res
 	}
@@ -965,7 +965,7 @@ func (rc *RecordCollection) Get(fieldName FieldName) interface{} {
 		}
 		// If value is not in cache we fetch the whole model to speed up later calls to Get,
 		// except for the case of non stored relation fields, where we only load the requested field.
-		all := !fi.fieldType.IsNonStoredRelationType()
+		all := !fi.FieldType.IsNonStoredRelationType()
 		res, _ = rc.get(fieldName, all)
 	}
 
@@ -976,7 +976,7 @@ func (rc *RecordCollection) Get(fieldName FieldName) interface{} {
 	}
 
 	if fi.isRelationField() {
-		res = rc.convertToRecordSet(res, fi.relatedModelName)
+		res = rc.convertToRecordSet(res, fi.RelatedModelName)
 	}
 	return res
 }
@@ -1155,8 +1155,8 @@ func (rc *RecordCollection) fieldsGroupOperators(fields []FieldName) ([]FieldNam
 			res[dbf.JSON()] = ""
 			continue
 		}
-		fi := rc.model.getRelatedFieldInfo(dbf)
-		if fi.fieldType != fieldtype.Float && fi.fieldType != fieldtype.Integer {
+		fi := rc.model.GetRelatedFieldInfo(dbf)
+		if fi.FieldType != fieldtype.Float && fi.FieldType != fieldtype.Integer {
 			continue
 		}
 		res[dbf.JSON()] = fi.groupOperator

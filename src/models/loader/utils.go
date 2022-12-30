@@ -38,8 +38,8 @@ func jsonizeExpr(mi *Model, exprs []string) []string {
 	fi := mi.fields.MustGet(exprs[0])
 	res = append(res, fi.json)
 	if len(exprs) > 1 {
-		if fi.relatedModel != nil {
-			res = append(res, jsonizeExpr(fi.relatedModel, exprs[1:])...)
+		if fi.RelatedModel != nil {
+			res = append(res, jsonizeExpr(fi.RelatedModel, exprs[1:])...)
 		} else {
 			log.Panic("Field is not a relation in model", "field", exprs[0], "model", mi.name)
 		}
@@ -57,7 +57,7 @@ func addNameSearchesToCondition(mi *Model, cond *Condition) {
 		if len(p.exprs) == 0 {
 			continue
 		}
-		fi := mi.getRelatedFieldInfo(joinFieldNames(p.exprs, ExprSep))
+		fi := mi.GetRelatedFieldInfo(joinFieldNames(p.exprs, ExprSep))
 		if !fi.isRelationField() {
 			continue
 		}
@@ -73,7 +73,7 @@ func addNameSearchesToCondition(mi *Model, cond *Condition) {
 // addNameSearchToExprs modifies the given exprs to search on the name of the related record
 // if it points to a relation field.
 func addNameSearchToExprs(fi *Field, exprs []FieldName) []FieldName {
-	relFI, exists := fi.relatedModel.fields.Get("name")
+	relFI, exists := fi.RelatedModel.fields.Get("name")
 	if !exists {
 		return exprs
 	}
@@ -112,11 +112,11 @@ func filterOnDBFields(mi *Model, fields []FieldName, dontAddID ...bool) []FieldN
 		}
 
 		// Depends field (e.g. User.Profile.Age)
-		if fi.relatedModel == nil {
+		if fi.RelatedModel == nil {
 			log.Panic("Field is not a relation in model", "field", fieldExprs[0], "model", mi.name)
 		}
 		subFieldName := joinFieldNames(fieldExprs[1:], ExprSep)
-		subFieldRes := filterOnDBFields(fi.relatedModel, []FieldName{subFieldName}, dontAddID...)
+		subFieldRes := filterOnDBFields(fi.RelatedModel, []FieldName{subFieldName}, dontAddID...)
 		if len(subFieldRes) == 0 {
 			// Our last expr is not stored after all, we don't add anything
 			continue

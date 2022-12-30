@@ -32,7 +32,7 @@ func (df DummyField) DeclareField(fc *FieldsCollection, name string) *Field {
 			Name: name,
 			Type: reflect.TypeOf(*new(bool)),
 		},
-		fieldType: fieldtype.NoType,
+		FieldType: fieldtype.NoType,
 	}
 	return fInfo
 }
@@ -102,7 +102,7 @@ func CreateFieldFromStruct(fc *FieldsCollection, fStruct interface{}, name strin
 		relatedPathStr:  val.FieldByName("Depends").String(),
 		noCopy:          noCopy,
 		structField:     structField,
-		fieldType:       fieldType,
+		FieldType:       fieldType,
 		defaultFunc:     val.FieldByName("Default").Interface().(func(Environment) interface{}),
 		onChange:        onchange,
 		onChangeWarning: onchangeWarning,
@@ -166,7 +166,7 @@ func (f *Field) addUpdate(property string, value interface{}) {
 func (f *Field) SetProperty(property string, value interface{}) {
 	switch property {
 	case "fieldType":
-		f.fieldType = value.(fieldtype.Type)
+		f.FieldType = value.(fieldtype.Type)
 	case "description":
 		f.description = value.(string)
 	case "help":
@@ -224,7 +224,7 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "filter":
 		f.filter = value.(*Condition)
 	case "relationModel":
-		f.relatedModelName = value.(*Model).TableName()
+		f.RelatedModelName = value.(*Model).TableName()
 	case "m2mRelModel":
 		f.m2mRelModel = value.(*Model)
 	case "m2mOurField":

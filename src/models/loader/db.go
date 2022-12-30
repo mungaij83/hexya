@@ -61,6 +61,7 @@ type DbAdapter interface {
 	operatorSQL(operator.Operator, interface{}) (string, interface{})
 	// typeSQL returns the SQL type string, including columns constraints if any
 	typeSQL(fi *Field) string
+	Connect() error
 	Connector() *DatabaseConnector
 	// columnSQLDefinition returns the SQL type string, including columns constraints if any
 	//
@@ -143,21 +144,32 @@ type DatabaseConnector struct {
 	db         *gorm.DB
 }
 
-func NewDatabaseConnector() DatabaseConnector {
-	params := ConnectionParams{
-		Driver:   viper.GetString("DB.Driver"),
-		Host:     viper.GetString("DB.Host"),
-		Port:     viper.GetString("DB.Port"),
-		User:     viper.GetString("DB.User"),
-		Password: viper.GetString("DB.Password"),
-		DBName:   viper.GetString("DB.Name"),
-		SSLMode:  viper.GetString("DB.SSLMode"),
-		SSLCert:  viper.GetString("DB.SSLCert"),
-		SSLKey:   viper.GetString("DB.SSLKey"),
-		SSLCA:    viper.GetString("DB.SSLCA"),
+func DBConnect(params ConnectionParams) DbAdapter {
+	connector := NewDatabaseConnector(&params)
+	adapter = &postgresAdapter{
+		connector: &connector,
+	}
+	adapter.Connect()
+	return adapter
+}
+
+func NewDatabaseConnector(params *ConnectionParams) DatabaseConnector {
+	if params == nil {
+		params = &ConnectionParams{
+			Driver:   viper.GetString("DB.Driver"),
+			Host:     viper.GetString("DB.Host"),
+			Port:     viper.GetString("DB.Port"),
+			User:     viper.GetString("DB.User"),
+			Password: viper.GetString("DB.Password"),
+			DBName:   viper.GetString("DB.Name"),
+			SSLMode:  viper.GetString("DB.SSLMode"),
+			SSLCert:  viper.GetString("DB.SSLCert"),
+			SSLKey:   viper.GetString("DB.SSLKey"),
+			SSLCA:    viper.GetString("DB.SSLCA"),
+		}
 	}
 	dd := DatabaseConnector{
-		connParams: params,
+		connParams: *params,
 	}
 	return dd
 }
@@ -169,6 +181,15 @@ func (db *DatabaseConnector) DBParams() ConnectionParams {
 
 func (db *DatabaseConnector) DB() *gorm.DB {
 	return db.db
+}
+
+func (db *DatabaseConnector) MustExec(query string, args ...interface{}) int64 {
+	var count int64
+	err := db.db.Exec(query, args).Count(&count).Error
+	if err != nil {
+		count = -1
+	}
+	return count
 }
 
 // DBConnect connects to a database using the given driver and arguments.

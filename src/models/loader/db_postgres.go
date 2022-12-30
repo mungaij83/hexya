@@ -102,9 +102,19 @@ func (d *postgresAdapter) Connector() *DatabaseConnector {
 	return d.connector
 }
 
+func (d *postgresAdapter) Connect() (rerr error) {
+	defer func() {
+		if err := recover(); err != nil {
+			rerr = err.(error)
+		}
+	}()
+	d.connector.DBConnect(d.connectionString(d.connector.DBParams()))
+	return
+}
+
 // typeSQL returns the sql type string for the given Field
 func (d *postgresAdapter) typeSQL(fi *Field) string {
-	typ, _ := pgTypes[fi.fieldType]
+	typ, _ := pgTypes[fi.FieldType]
 	return typ
 }
 
@@ -113,12 +123,12 @@ func (d *postgresAdapter) typeSQL(fi *Field) string {
 // If null is true, then the column will be nullable, whatever the field defines
 func (d *postgresAdapter) columnSQLDefinition(fi *Field, null bool) string {
 	var res string
-	typ, ok := pgTypes[fi.fieldType]
+	typ, ok := pgTypes[fi.FieldType]
 	res = typ
 	if !ok {
-		log.Panic("Unknown column type", "type", fi.fieldType, "model", fi.model, "field", fi.name)
+		log.Panic("Unknown column type", "type", fi.FieldType, "model", fi.model, "field", fi.name)
 	}
-	switch fi.fieldType {
+	switch fi.FieldType {
 	case fieldtype.Char:
 		if fi.size > 0 {
 			res = fmt.Sprintf("%s(%d)", res, fi.size)
@@ -133,7 +143,7 @@ func (d *postgresAdapter) columnSQLDefinition(fi *Field, null bool) string {
 		res += " NOT NULL"
 	}
 
-	if fi.unique || fi.fieldType == fieldtype.One2One {
+	if fi.unique || fi.FieldType == fieldtype.One2One {
 		res += " UNIQUE"
 	}
 	return res

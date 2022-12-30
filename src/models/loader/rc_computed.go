@@ -147,7 +147,7 @@ func (rc *RecordCollection) processInverseMethods(data RecordData) {
 	md := NewModelDataFromRS(rc, data.Underlying().FieldMap)
 	for _, fieldName := range md.Underlying().Keys() {
 		fName := rc.model.FieldName(fieldName)
-		fi := rc.model.getRelatedFieldInfo(fName)
+		fi := rc.model.GetRelatedFieldInfo(fName)
 		if !fi.isComputedField() || rc.Env().Context().GetBool("hexya_force_compute_write") {
 			continue
 		}

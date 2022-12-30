@@ -60,20 +60,20 @@ func (m *Model) getRelatedModelInfo(path FieldName, skipLast ...bool) *Model {
 
 	exprs := splitFieldNames(path, ExprSep)
 	fi := m.fields.MustGet(exprs[0].JSON())
-	if fi.relatedModel == nil || (len(exprs) == 1 && skip) {
+	if fi.RelatedModel == nil || (len(exprs) == 1 && skip) {
 		// The field is a non relational field, so we are already
 		// on the related Model. Or we have only 1 exprs and we skip the last one.
 		return m
 	}
 	if len(exprs) > 1 {
-		return fi.relatedModel.getRelatedModelInfo(joinFieldNames(exprs[1:], ExprSep), skipLast...)
+		return fi.RelatedModel.getRelatedModelInfo(joinFieldNames(exprs[1:], ExprSep), skipLast...)
 	}
-	return fi.relatedModel
+	return fi.RelatedModel
 }
 
 // getRelatedFieldIfo returns the Field of the related field when
 // following path. Path can be formed from field names or JSON names.
-func (m *Model) getRelatedFieldInfo(path FieldName) *Field {
+func (m *Model) GetRelatedFieldInfo(path FieldName) *Field {
 	colExprs := splitFieldNames(path, ExprSep)
 	var rmi *Model
 	num := len(colExprs)
@@ -140,7 +140,7 @@ func (m *Model) convertValuesToFieldType(fMap *FieldMap, writeDB bool) {
 			// Hack to manage client returning false instead of nil
 			fMapValue = nil
 		}
-		fi := m.getRelatedFieldInfo(m.FieldName(colName))
+		fi := m.GetRelatedFieldInfo(m.FieldName(colName))
 		fType := fi.structField.Type
 		typedValue := reflect.New(fType).Interface()
 		err := typesutils.Convert(fMapValue, typedValue, fi.isRelationField())
@@ -152,10 +152,10 @@ func (m *Model) convertValuesToFieldType(fMap *FieldMap, writeDB bool) {
 	if writeDB {
 		// Change zero values to NULL if writing to DB when applicable
 		for colName, fMapValue := range *fMap {
-			fi := m.getRelatedFieldInfo(m.FieldName(colName))
+			fi := m.GetRelatedFieldInfo(m.FieldName(colName))
 			val := reflect.ValueOf(fMapValue)
 			switch {
-			case fi.fieldType.IsFKRelationType() && val.Kind() == reflect.Int64 && val.Int() == 0:
+			case fi.FieldType.IsFKRelationType() && val.Kind() == reflect.Int64 && val.Int() == 0:
 				val = reflect.ValueOf((*interface{})(nil))
 				destVals.SetMapIndex(reflect.ValueOf(colName), val)
 			}
@@ -312,8 +312,8 @@ func (m *Model) FieldsGet(fields ...FieldName) map[string]*FieldInfo {
 	for _, f := range fields {
 		fInfo := m.fields.MustGet(f.Name())
 		var relation string
-		if fInfo.relatedModel != nil {
-			relation = fInfo.relatedModel.name
+		if fInfo.RelatedModel != nil {
+			relation = fInfo.RelatedModel.name
 		}
 		var filter interface{}
 		if fInfo.filter != nil {
@@ -327,7 +327,7 @@ func (m *Model) FieldsGet(fields ...FieldName) map[string]*FieldInfo {
 			Searchable:    true,
 			Depends:       fInfo.depends,
 			Sortable:      true,
-			Type:          fInfo.fieldType,
+			Type:          fInfo.FieldType,
 			Store:         fInfo.isSettable(),
 			String:        fInfo.description,
 			Relation:      relation,
@@ -441,7 +441,7 @@ func CreateModel(name string, options tools.Option) *Model {
 		model:     mi,
 		required:  true,
 		noCopy:    true,
-		fieldType: fieldtype.Integer,
+		FieldType: fieldtype.Integer,
 		structField: reflect.TypeOf(
 			struct {
 				ID int64

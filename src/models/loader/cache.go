@@ -65,11 +65,11 @@ func (c *cache) updateEntry(mi *Model, id int64, fieldName string, value interfa
 // and a field json name (no path).
 func (c *cache) updateEntryByRef(mi *Model, id int64, jsonName string, value interface{}, ctxSlug string) {
 	fi := mi.fields.MustGet(jsonName)
-	switch fi.fieldType {
+	switch fi.FieldType {
 	case fieldtype.One2Many:
 		ids := value.([]int64)
 		for _, relID := range ids {
-			c.updateEntry(fi.relatedModel, relID, fi.jsonReverseFK, id, ctxSlug)
+			c.updateEntry(fi.RelatedModel, relID, fi.jsonReverseFK, id, ctxSlug)
 		}
 		if len(ids) == 1 {
 			// We have only one ID.
@@ -81,7 +81,7 @@ func (c *cache) updateEntryByRef(mi *Model, id int64, jsonName string, value int
 
 	case fieldtype.Rev2One:
 		relID := value.(int64)
-		c.updateEntry(fi.relatedModel, relID, fi.jsonReverseFK, id, ctxSlug)
+		c.updateEntry(fi.RelatedModel, relID, fi.jsonReverseFK, id, ctxSlug)
 		c.setDataValue(mi.name, id, jsonName, true)
 
 	case fieldtype.Many2Many:
@@ -255,7 +255,7 @@ func (c *cache) addRecord(mi *Model, id int64, fMap FieldMap, ctxSlug string) {
 func (c *cache) invalidateRecord(mi *Model, id int64) {
 	c.deleteData(mi.name, id)
 	for _, fi := range mi.fields.registryByJSON {
-		if fi.fieldType == fieldtype.Many2Many {
+		if fi.FieldType == fieldtype.Many2Many {
 			c.removeM2MLinks(fi, id)
 		}
 	}
@@ -268,7 +268,7 @@ func (c *cache) removeEntry(mi *Model, id int64, fieldName, ctxSlug string) {
 	}
 	c.deleteFieldData(mi.name, id, fieldName)
 	fi := mi.fields.MustGet(fieldName)
-	if fi.fieldType == fieldtype.Many2Many {
+	if fi.FieldType == fieldtype.Many2Many {
 		c.removeM2MLinks(fi, id)
 	}
 }
@@ -284,13 +284,13 @@ func (c *cache) get(mi *Model, id int64, fieldName string, ctxSlug string) inter
 		return nil
 	}
 	fi := mi.fields.MustGet(fName)
-	switch fi.fieldType {
+	switch fi.FieldType {
 	case fieldtype.One2Many:
-		if _, ok := c.data[fi.relatedModelName]; !ok {
+		if _, ok := c.data[fi.RelatedModelName]; !ok {
 			return nil
 		}
 		var relIds []int64
-		for cID, cVal := range c.data[fi.relatedModelName] {
+		for cID, cVal := range c.data[fi.RelatedModelName] {
 			if cVal[fi.jsonReverseFK] != id {
 				continue
 			}
@@ -298,10 +298,10 @@ func (c *cache) get(mi *Model, id int64, fieldName string, ctxSlug string) inter
 		}
 		return relIds
 	case fieldtype.Rev2One:
-		if _, ok := c.data[fi.relatedModelName]; !ok {
+		if _, ok := c.data[fi.RelatedModelName]; !ok {
 			return nil
 		}
-		for cID, cVal := range c.data[fi.relatedModelName] {
+		for cID, cVal := range c.data[fi.RelatedModelName] {
 			if cVal[fi.jsonReverseFK] != id {
 				continue
 			}

@@ -14,44 +14,34 @@
 
 package tests
 
-import (
-	"github.com/hexya-erp/hexya/src/models/loader"
-	"testing"
-
-	"github.com/hexya-erp/hexya/src/models/security"
-	"github.com/hexya-erp/pool/h"
-	"github.com/hexya-erp/pool/q"
-	. "github.com/smartystreets/goconvey/convey"
-)
-
-func TestConditions(t *testing.T) {
-	Convey("Testing SQL building for queries", t, func() {
-		if driver == "postgres" {
-			So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
-				rs := h.User().NewSet(env)
-				rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().BestPostFilteredOn(q.Post().Title().Equals("foo"))))
-				Convey("Simple query", func() {
-					So(func() { rs.Load() }, ShouldNotPanic)
-				})
-				Convey("Simple query with args inflation", func() {
-					getUserID := func(rs loader.RecordSet) int {
-						return int(rs.Env().Uid())
-					}
-					rs2 := h.User().Search(env, q.User().Nums().EqualsFunc(getUserID))
-					So(func() { rs2.Load() }, ShouldNotPanic)
-				})
-				Convey("Check WHERE clause with additionnal filter", func() {
-					rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().Age().GreaterOrEqual(12)))
-					So(func() { rs.Load() }, ShouldNotPanic)
-				})
-				Convey("Check full query with all conditions", func() {
-					rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().Age().GreaterOrEqual(12)).Or().Name().ILike("John"))
-					c2 := q.User().Name().Like("jane").Or().ProfileFilteredOn(q.Profile().Money().Lower(1234.56))
-					rs = rs.Search(c2)
-					rs.Load()
-					So(func() { rs.Load() }, ShouldNotPanic)
-				})
-			}), ShouldBeNil)
-		}
-	})
-}
+//func TestConditions(t *testing.T) {
+//	Convey("Testing SQL building for queries", t, func() {
+//		if driver == "postgres" {
+//			So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
+//				rs := h.User().NewSet(env)
+//				rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().BestPostFilteredOn(q.Post().Title().Equals("foo"))))
+//				Convey("Simple query", func() {
+//					So(func() { rs.Load() }, ShouldNotPanic)
+//				})
+//				Convey("Simple query with args inflation", func() {
+//					getUserID := func(rs loader.RecordSet) int {
+//						return int(rs.Env().Uid())
+//					}
+//					rs2 := h.User().Search(env, q.User().Nums().EqualsFunc(getUserID))
+//					So(func() { rs2.Load() }, ShouldNotPanic)
+//				})
+//				Convey("Check WHERE clause with additionnal filter", func() {
+//					rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().Age().GreaterOrEqual(12)))
+//					So(func() { rs.Load() }, ShouldNotPanic)
+//				})
+//				Convey("Check full query with all conditions", func() {
+//					rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().Age().GreaterOrEqual(12)).Or().Name().ILike("John"))
+//					c2 := q.User().Name().Like("jane").Or().ProfileFilteredOn(q.Profile().Money().Lower(1234.56))
+//					rs = rs.Search(c2)
+//					rs.Load()
+//					So(func() { rs.Load() }, ShouldNotPanic)
+//				})
+//			}), ShouldBeNil)
+//		}
+//	})
+//}

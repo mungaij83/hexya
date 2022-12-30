@@ -330,9 +330,9 @@ func (md *ModelData) Unset(field FieldName) *ModelData {
 //
 // This method can be called multiple times to create multiple records
 func (md *ModelData) Create(field FieldName, related *ModelData) *ModelData {
-	fi := md.Model.getRelatedFieldInfo(field)
-	if related.Model != fi.relatedModel {
-		log.Panic("create data must be of the model of the relation field", "fieldModel", fi.relatedModel, "dataModel", related.Model)
+	fi := md.Model.GetRelatedFieldInfo(field)
+	if related.Model != fi.RelatedModel {
+		log.Panic("create data must be of the model of the relation field", "fieldModel", fi.RelatedModel, "dataModel", related.Model)
 	}
 	md.ToCreate[field.JSON()] = append(md.ToCreate[field.JSON()], related)
 	return md
@@ -390,11 +390,11 @@ func (md *ModelData) Underlying() *ModelData {
 
 // fixFieldValue changes the given value for the given field by applying several fixes
 func fixFieldValue(v interface{}, fi *Field) interface{} {
-	if _, ok := v.(bool); ok && fi.fieldType != fieldtype.Boolean {
+	if _, ok := v.(bool); ok && fi.FieldType != fieldtype.Boolean {
 		// Client returns false when empty
 		v = reflect.Zero(fi.structField.Type).Interface()
 	}
-	if _, ok := v.([]byte); ok && fi.fieldType == fieldtype.Float {
+	if _, ok := v.([]byte); ok && fi.FieldType == fieldtype.Float {
 		// DB can return numeric types as []byte
 		switch fi.structField.Type.Kind() {
 		case reflect.Float64:
@@ -407,7 +407,7 @@ func fixFieldValue(v interface{}, fi *Field) interface{} {
 			}
 		}
 	}
-	if _, ok := v.(float64); ok && fi.fieldType == fieldtype.Integer {
+	if _, ok := v.(float64); ok && fi.FieldType == fieldtype.Integer {
 		// JSON unmarshals int to float64. Convert back to the Go type of fi.
 		val := reflect.ValueOf(v)
 		typ := fi.structField.Type
@@ -424,7 +424,7 @@ func NewModelData(model *Model, fm ...FieldMap) *ModelData {
 	fMap := make(FieldMap)
 	for _, f := range fm {
 		for k, v := range f {
-			fi := model.Underlying().getRelatedFieldInfo(model.FieldName(k))
+			fi := model.Underlying().GetRelatedFieldInfo(model.FieldName(k))
 			v = fixFieldValue(v, fi)
 			fMap[fi.json] = v
 		}
@@ -445,9 +445,9 @@ func NewModelDataFromRS(rs RecordSet, fm ...FieldMap) *ModelData {
 	fMap := make(FieldMap)
 	for _, f := range fm {
 		for k, v := range f {
-			fi := rs.Collection().Model().getRelatedFieldInfo(rs.Collection().Model().FieldName(k))
+			fi := rs.Collection().Model().GetRelatedFieldInfo(rs.Collection().Model().FieldName(k))
 			if fi.isRelationField() {
-				v = rs.Collection().convertToRecordSet(v, fi.relatedModelName)
+				v = rs.Collection().convertToRecordSet(v, fi.RelatedModelName)
 			}
 			v = fixFieldValue(v, fi)
 			fMap[fi.json] = v

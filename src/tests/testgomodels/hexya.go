@@ -30,12 +30,15 @@ func init() {
 		Name: MODULE_NAME,
 		PostInit: func() {
 			loader.ExecuteInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
-				env.Cr().Execute(`DROP VIEW IF EXISTS user_view;
+				err := env.Cr().Exec(`DROP VIEW IF EXISTS user_view;
 					CREATE VIEW user_view AS (
 						SELECT u.id, u.name, p.city, u.active
 						FROM "user" u
 							LEFT JOIN "profile" p ON p.id = u.profile_id
-					)`)
+					)`).Error
+				if err != nil {
+					panic(err)
+				}
 			})
 		},
 	})

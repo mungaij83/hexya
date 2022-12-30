@@ -13,17 +13,16 @@ import (
 	"github.com/hexya-erp/hexya/src/actions"
 	"github.com/hexya-erp/hexya/src/controllers"
 	"github.com/hexya-erp/hexya/src/menus"
-	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/reports"
 	"github.com/hexya-erp/hexya/src/server"
 	"github.com/hexya-erp/hexya/src/templates"
 	"github.com/hexya-erp/hexya/src/tools/logging"
 	"github.com/hexya-erp/hexya/src/views"
-	"github.com/jmoiron/sqlx"
 	"github.com/spf13/viper"
 )
 
 var driver, user, password, prefix, debug string
+var adapter loader.DbAdapter
 
 // RunTests initializes the database, run the tests given by m and
 // tears the database down.
@@ -91,36 +90,33 @@ func InitializeTests(moduleName string) {
 		viper.Set("LogStdout", true)
 	}
 	logging.Initialize()
-
-	db := sqlx.MustConnect(driver, fmt.Sprintf("dbname=postgres sslmode=disable user=%s password=%s", user, password))
-	keepDB := os.Getenv("HEXYA_KEEP_TEST_DB") != ""
-	var dbExists bool
-	err := db.Get(&dbExists, fmt.Sprintf("SELECT TRUE FROM pg_database WHERE datname = '%s'", dbName))
-	if err != nil {
-		fmt.Println(err)
-	}
-	if !dbExists || !keepDB {
-		fmt.Println("Creating database", dbName)
-		db.MustExec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbName))
-		db.MustExec(fmt.Sprintf("CREATE DATABASE %s", dbName))
-	}
-	db.Close()
-
 	server.PreInit()
-	loader.DBConnect(loader.ConnectionParams{
+	adapter = loader.DBConnect(loader.ConnectionParams{
 		Driver:   driver,
 		DBName:   dbName,
 		User:     user,
 		Password: password,
 		SSLMode:  "disable",
 	})
-	models.BootStrap()
+	keepDB := os.Getenv("HEXYA_KEEP_TEST_DB") != ""
+	var count int64
+	count = adapter.Connector().MustExec(fmt.Sprintf("SELECT TRUE FROM pg_database WHERE datname = '%s'", dbName))
+	if count <= 0 {
+		fmt.Println("Error: ", "value", count)
+	}
+	if count > 0 || !keepDB {
+		fmt.Println("Creating database", dbName)
+		adapter.Connector().MustExec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbName))
+		adapter.Connector().MustExec(fmt.Sprintf("CREATE DATABASE %s", dbName))
+	}
+
+	//models.BootStrap()
 	resourceDir, _ := filepath.Abs(filepath.Join(".", "res"))
 	server.ResourceDir = resourceDir
 	server.LoadInternalResources(resourceDir)
-	if !dbExists || !keepDB {
+	if count > 0 || !keepDB {
 		fmt.Println("Upgrading schemas in database", dbName)
-		models.SyncDatabase()
+		//models.SyncDatabase()
 		fmt.Println("Loading resources into database", dbName)
 		server.LoadDataRecords(resourceDir)
 		server.LoadDemoRecords(resourceDir)
@@ -136,15 +132,14 @@ func InitializeTests(moduleName string) {
 
 // TearDownTests tears down the tests for the given module
 func TearDownTests(moduleName string) {
-	loader.DBClose()
 	keepDB := os.Getenv("HEXYA_KEEP_TEST_DB")
 	if keepDB != "" {
 		return
 	}
 	fmt.Printf("Tearing down database for module %s...", moduleName)
 	dbName := fmt.Sprintf("%s_%s_tests", prefix, moduleName)
-	db := sqlx.MustConnect(driver, fmt.Sprintf("dbname=postgres sslmode=disable user=%s password=%s", user, password))
-	db.MustExec(fmt.Sprintf("DROP DATABASE %s", dbName))
-	db.Close()
+	adapter.Connector().MustExec(fmt.Sprintf("DROP DATABASE %s", dbName))
 	fmt.Println("Ok")
+	// Close connection
+	adapter.Connector().DBClose()
 }

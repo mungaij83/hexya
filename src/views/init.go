@@ -19,9 +19,6 @@ var log logging.Logger
 // - extracts embedded views
 // - populates the fields map from the views arch.
 func BootStrap() {
-	if !models.BootStrapped() {
-		log.Panic("Models must be bootstrapped before bootstrapping views")
-	}
 	loadModelViews()
 	// Inherit/Extend views
 	for loop := 0; loop < maxInheritanceDepth; loop++ {

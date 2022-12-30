@@ -104,14 +104,14 @@ func (rc *RecordCollection) substituteRelatedInQuery() *RecordCollection {
 		for _, expr := range exprs {
 			resExprs = append(resExprs, expr)
 			curPath = joinFieldNames(resExprs, ExprSep)
-			fi := rc.model.getRelatedFieldInfo(curPath)
+			fi := rc.model.GetRelatedFieldInfo(curPath)
 			curFI := fi
 			for curFI.isRelatedField() {
 				// We loop because target field may be related itself
 				reLen := len(resExprs)
 				jsonPath := curFI.relatedPath
 				resExprs = append(resExprs[:reLen-1], splitFieldNames(jsonPath, ExprSep)...)
-				curFI = rc.model.getRelatedFieldInfo(joinFieldNames(resExprs, ExprSep))
+				curFI = rc.model.GetRelatedFieldInfo(joinFieldNames(resExprs, ExprSep))
 			}
 		}
 		substs[joinFieldNames(exprs, ExprSep)] = resExprs
@@ -126,7 +126,7 @@ func (rc *RecordCollection) substituteRelatedInQuery() *RecordCollection {
 func (rc *RecordCollection) substituteRelatedInPath(path FieldName) FieldName {
 	exprs := splitFieldNames(path, ExprSep)
 	prefix := exprs[0]
-	fi := rc.model.getRelatedFieldInfo(prefix)
+	fi := rc.model.GetRelatedFieldInfo(prefix)
 	if fi.isRelatedField() {
 		newPath := fi.relatedPath
 		if len(exprs) > 1 {
@@ -148,9 +148,9 @@ func (rc *RecordCollection) substituteRelatedInPath(path FieldName) FieldName {
 func (rc *RecordCollection) createRelatedRecord(path FieldName, vals RecordData) *RecordCollection {
 	log.Debug("Creating related record", "recordset", rc, "path", path, "vals", vals)
 	rc.EnsureOne()
-	fi := rc.model.getRelatedFieldInfo(path)
+	fi := rc.model.GetRelatedFieldInfo(path)
 	exprs := splitFieldNames(path, ExprSep)
-	switch fi.fieldType {
+	switch fi.FieldType {
 	case fieldtype.Many2One, fieldtype.One2One, fieldtype.Many2Many:
 		resRS := rc.createRelatedFKRecord(fi, vals)
 		rc.Set(path, resRS.Collection())
@@ -164,17 +164,17 @@ func (rc *RecordCollection) createRelatedRecord(path FieldName, vals RecordData)
 			}
 			target = target.Records()[0]
 		}
-		vals.Underlying().Set(fi.relatedModel.FieldName(fi.reverseFK), target)
-		return rc.env.Pool(fi.relatedModel.name).Call("Create", vals).(RecordSet).Collection()
+		vals.Underlying().Set(fi.RelatedModel.FieldName(fi.reverseFK), target)
+		return rc.env.Pool(fi.RelatedModel.name).Call("Create", vals).(RecordSet).Collection()
 	}
 	return rc.env.Pool(rc.ModelName())
 }
 
 // createRelatedFKRecord creates a single related record for the given FK field
 func (rc *RecordCollection) createRelatedFKRecord(fi *Field, data RecordData) *RecordCollection {
-	rSet := rc.env.Pool(fi.relatedModel.name)
+	rSet := rc.env.Pool(fi.RelatedModel.name)
 	if fi.embed {
-		rSet = rSet.WithContext("default_hexya_external_id", fmt.Sprintf("%s_%s", rc.Get(rc.model.FieldName("HexyaExternalID")), strutils.SnakeCase(fi.relatedModel.name)))
+		rSet = rSet.WithContext("default_hexya_external_id", fmt.Sprintf("%s_%s", rc.Get(rc.model.FieldName("HexyaExternalID")), strutils.SnakeCase(fi.RelatedModel.name)))
 	}
 	res := rSet.Call("Create", data)
 	return res.(RecordSet).Collection()

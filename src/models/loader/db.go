@@ -108,6 +108,7 @@ type DbAdapter interface {
 	// isSerializationError returns true if the given error is a serialization error
 	// and that the failed transaction should be retried.
 	isSerializationError(err error) bool
+	Close() bool
 }
 
 // Cursor is a wrapper around a database transaction

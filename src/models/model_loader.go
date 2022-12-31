@@ -122,34 +122,75 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 func (ml ModelLoader) LoadModel(data interface{}) (map[string]loader.FieldDefinition, error) {
 	modelFields := make(map[string]loader.FieldDefinition)
 	fieldTypes := reflect.TypeOf(data)
-	log.Info("Number of fields: %v", fieldTypes.NumField())
+	log.Info("Number of fields:", "fields", fieldTypes.NumField())
 	for i := 0; i < fieldTypes.NumField(); i++ {
 		f := fieldTypes.Field(i)
 		log.Info("Field: %v -> %v", f.Name, f.Type.Name())
-		k, v, ferr := ml.GetFieldDetails(f, &data)
+		// Load field methods
+		ferr := ml.LoadEmbendedStructFields(f, modelFields, data)
 		if ferr != nil {
-			if v == nil {
-				log.Warn("Ignoring unknown field type: %v", ferr.Error())
-			} else {
-				return nil, ferr
-			}
+			log.Warn("Ignoring unknown field type:", "FieldError", ferr.Error())
 		}
-		modelFields[k] = v
 	}
 	return modelFields, nil
 }
 
+func (ml ModelLoader) LoadEmbendedStructFields(f reflect.StructField, fields map[string]loader.FieldDefinition, data interface{}) error {
+	var err error
+	// Load a base field
+	if f.Type.Kind() != reflect.Struct || f.Type.Name() == "Time" {
+		k, v, ferr := ml.GetFieldDetails(f, &data)
+		if ferr != nil {
+			if v == nil {
+				log.Warn("Ignoring unknown field type:", "FieldError", ferr.Error(), "kind", f.Type.Kind(), "name", f.Name)
+			} else {
+				return ferr
+			}
+		}
+		fields[k] = v
+		return nil
+	}
+	enumWrapper := reflect.TypeOf((*loader.EnumWrapper)(nil)).Elem()
+	if f.Type.Implements(enumWrapper) {
+		log.Debug("Loading enum field: ", "type", f.Type.Name(), "kind", f.Type.Kind())
+		return nil
+	}
+	// Parse an embedded struct
+	log.Debug("Parsing embedded struct", "type", f.Type.Name(), "name", f.Name)
+	ff := f.Type
+	for i := 0; i < ff.NumField(); i++ {
+		f := ff.Field(i)
+		log.Info("Field: %v -> %v", f.Name, f.Type.Name())
+		if f.Type.Kind() == reflect.Ptr {
+			err = ml.LoadEmbendedStructFields(f, fields, data)
+			if err != nil {
+				log.Warn("Ignoring unknown field type:", "EmbeddedStruct", err)
+			}
+		}
+		k, v, ferr := ml.GetFieldDetails(f, &data)
+		if ferr != nil {
+			if v == nil {
+				log.Warn("Ignoring unknown field type:", "FieldError", ferr.Error())
+			} else {
+				return ferr
+			}
+		}
+		fields[k] = v
+	}
+
+	return nil
+}
 func (ml ModelLoader) GetFieldOptions(name string, data interface{}) map[string]string {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error("Failed to get options from struct: ", err)
+			log.Error("Failed to get options from struct: ", "optError", err)
 			panic(fmt.Sprintf("Field name not available: %v -> %v", name, err))
 		}
 
 	}()
-	log.Info("Get options from field: ", name)
+	log.Info("Get options from field: ", "fieldName", name)
 	structVal := reflect.ValueOf(data)
-	log.Info("Get options from field: ", structVal)
+	log.Info("Get options from field: ", "structValue", structVal)
 	field := structVal.FieldByName(name)
 	if field.IsValid() {
 		// Todo: Check the enum wrapper
@@ -196,7 +237,7 @@ func (ml ModelLoader) GetFieldDetails(f reflect.StructField, modelData interface
 	if err == nil && rval != nil {
 		return fname, rval, nil
 	} else {
-		log.Debug("Non relationship field: %v", err)
+		log.Debug("Non relationship field: ", "error", err)
 	}
 	// Parse other fields
 	switch f.Type.Name() {
@@ -278,7 +319,7 @@ func (ml ModelLoader) GetFieldDetails(f reflect.StructField, modelData interface
 			ml.GetStringField(&val, data)
 			return f.Name, val, nil
 		}
-	case "int", "int64", "int32":
+	case "int", "int64", "int32", "int16", "uint", "uint16", "uint32", "uint64":
 		val := fields.Integer{
 			JSON:     data.JSON,
 			String:   data.Message,

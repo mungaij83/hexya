@@ -16,7 +16,7 @@ type TestModel struct {
 }
 
 type TestModel2 struct {
-	HexyaAbstractModel
+	HexyaBaseModel
 	Name         string    `json:"name" hexya:"display_name=Name;index;required;translate"`
 	CreateOn     time.Time `json:"create_on" hexya:"display_name=Create On"`
 	ProductCount int64     `json:"product_count" hexya:"display_name=# Products;help=The number of products under this category (Does not consider the children categories)"`
@@ -44,10 +44,11 @@ func (TestModel2) ParentTableName() string {
 	return "test_model"
 }
 
-func TestMain(t *testing.M) {
+func LoadMain(t *testing.M) {
 	mLoader = ModelLoader{}
 	t.Run()
 }
+
 func TestModelLoader_LoadBaseModel(t *testing.T) {
 	Convey("Load model", t, func() {
 		mdl, err := mLoader.LoadBaseModel(TestModel{})
@@ -57,6 +58,8 @@ func TestModelLoader_LoadBaseModel(t *testing.T) {
 		mdl, err = mLoader.LoadBaseModel(TestModel2{})
 		So(err, ShouldBeNil)
 		So(mdl, ShouldNotBeNil)
+		So(mdl.Fields().MustGet("CreateDate"), ShouldNotBeNil)
+		So(mdl.Fields().MustGet("CreateUID"), ShouldNotBeNil)
 		So(mdl.IsMixin(), ShouldBeFalse)
 		t.Logf("Data 2: %+v", mdl)
 		mdl, err = mLoader.LoadBaseModel(TestModel3{})

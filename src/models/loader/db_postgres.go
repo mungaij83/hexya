@@ -326,3 +326,14 @@ func (d *postgresAdapter) isSerializationError(err error) bool {
 	}
 	return false
 }
+
+func (d *postgresAdapter) Close() (ok bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			ok = false
+		}
+	}()
+	d.Connector().DBClose()
+	ok = true
+	return
+}

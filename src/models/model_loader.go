@@ -127,7 +127,7 @@ func (ml ModelLoader) LoadModel(data interface{}) (map[string]loader.FieldDefini
 		f := fieldTypes.Field(i)
 		log.Info("Field: %v -> %v", f.Name, f.Type.Name())
 		// Load field methods
-		ferr := ml.LoadEmbendedStructFields(f, modelFields, data)
+		ferr := ml.LoadAndDetectEmbeddedFields(f, modelFields, data)
 		if ferr != nil {
 			log.Warn("Ignoring unknown field type:", "FieldError", ferr.Error())
 		}
@@ -135,7 +135,7 @@ func (ml ModelLoader) LoadModel(data interface{}) (map[string]loader.FieldDefini
 	return modelFields, nil
 }
 
-func (ml ModelLoader) LoadEmbendedStructFields(f reflect.StructField, fields map[string]loader.FieldDefinition, data interface{}) error {
+func (ml ModelLoader) LoadAndDetectEmbeddedFields(f reflect.StructField, fields map[string]loader.FieldDefinition, data interface{}) error {
 	var err error
 	// Load a base field
 	if f.Type.Kind() != reflect.Struct || f.Type.Name() == "Time" {
@@ -150,19 +150,26 @@ func (ml ModelLoader) LoadEmbendedStructFields(f reflect.StructField, fields map
 		fields[k] = v
 		return nil
 	}
+
 	enumWrapper := reflect.TypeOf((*loader.EnumWrapper)(nil)).Elem()
 	if f.Type.Implements(enumWrapper) {
 		log.Debug("Loading enum field: ", "type", f.Type.Name(), "kind", f.Type.Kind())
+		k, v, ferr := ml.GetFieldDetails(f, &data)
+		if ferr != nil {
+			return ferr
+		}
+		fields[k] = v
 		return nil
 	}
+
 	// Parse an embedded struct
 	log.Debug("Parsing embedded struct", "type", f.Type.Name(), "name", f.Name)
 	ff := f.Type
 	for i := 0; i < ff.NumField(); i++ {
 		f := ff.Field(i)
 		log.Info("Field: %v -> %v", f.Name, f.Type.Name())
-		if f.Type.Kind() == reflect.Ptr {
-			err = ml.LoadEmbendedStructFields(f, fields, data)
+		if f.Type.Kind() == reflect.Struct {
+			err = ml.LoadAndDetectEmbeddedFields(f, fields, data)
 			if err != nil {
 				log.Warn("Ignoring unknown field type:", "EmbeddedStruct", err)
 			}
@@ -387,6 +394,23 @@ func (ml ModelLoader) GetFieldDetails(f reflect.StructField, modelData interface
 			}
 			return f.Name, val, nil
 		}
+
+	case "EnumWrapper":
+		data.Options = ml.GetFieldOptions(f.Name, data)
+		// Create a selection
+		val := fields.Selection{
+			JSON:      data.JSON,
+			String:    data.Message,
+			Index:     data.Index,
+			Selection: data.Options,
+			Required:  data.Required,
+			Help:      data.Help,
+			Unique:    data.Unique,
+			Stored:    data.Stored,
+			ReadOnly:  data.ReadOnly,
+			NoCopy:    data.NoCopy,
+		}
+		return f.Name, val, nil
 	default:
 		if strings.Compare(data.Type, "selection") == 0 {
 			// Check for field wrapper of a selection

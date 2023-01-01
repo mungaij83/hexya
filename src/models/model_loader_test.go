@@ -37,6 +37,8 @@ type TestModel3 struct {
 	Name         string     `json:"name" hexya:"display_name=Name;index;required;translate"`
 	Gender       GenderEnum `json:"gender" hexya:"type=selection;display_name=Gender;translate"`
 	CreateOn     time.Time  `json:"create_on" hexya:"display_name=Create On"`
+	Model2Id     int64
+	Model2       TestModel2 `hexya:"on2many=Model2Id" gorm:"foreignKey=Model2Id"`
 	ProductCount int64      `json:"product_count" hexya:"display_name=# Products;help=The number of products under this category (Does not consider the children categories)"`
 }
 

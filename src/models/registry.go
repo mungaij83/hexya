@@ -31,7 +31,7 @@ var Registry *modelCollection
 type modelCollection struct {
 	sync.RWMutex
 	bootstrapped        bool
-	registryByTableName map[string]Repository[any, int64]
+	registryByTableName map[string]Repository[DataModel, int64]
 	sequences           map[string]*Sequence
 }
 
@@ -80,7 +80,7 @@ func (mc *modelCollection) MustGetSequence(nameOrJSON string) *Sequence {
 }
 
 // add the given Model to the modelCollection
-func (mc *modelCollection) add(mi Repository[any, int64]) {
+func (mc *modelCollection) add(mi Repository[DataModel, int64]) {
 	if _, exists := mc.Get(mi.TableName()); exists {
 		log.Panic("Trying to add already existing model", "model", mi.TableName())
 	}
@@ -100,7 +100,7 @@ func (mc *modelCollection) addSequence(s *Sequence) {
 // newModelCollection returns a pointer to a new modelCollection
 func newModelCollection() *modelCollection {
 	return &modelCollection{
-		registryByTableName: make(map[string]Repository[any, int64]),
+		registryByTableName: make(map[string]Repository[DataModel, int64]),
 		sequences:           make(map[string]*Sequence),
 	}
 }

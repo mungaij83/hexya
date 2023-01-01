@@ -32,7 +32,6 @@ type Repository[T any, K PrimaryKeys] interface {
 	Fields() *loader.FieldsCollection
 	GetFieldName(s string) loader.FieldName
 	GetModel() (*loader.Model, bool)
-	Roles()
 	IsMixin() bool
 	IsManual() bool
 	isSystem() bool
@@ -43,13 +42,13 @@ type Repository[T any, K PrimaryKeys] interface {
 }
 
 // ModelRepository default implementation of model repository
-type ModelRepository[T any, K PrimaryKeys] struct {
+type ModelRepository[T DataModel, K PrimaryKeys] struct {
 	env       *loader.Environment
 	tableName string
 	model     *loader.Model
 }
 
-func (mr *ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) error {
+func (mr ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) error {
 	if mr.env == nil {
 		return errors.New("environment is not set for this repository, call set env first")
 	}
@@ -67,10 +66,10 @@ func (mr *ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) erro
 	mr.tableName = mr.env.Cr().Unscoped().Model(new(T)).Name()
 	return nil
 }
-func (mr *ModelRepository[T, K]) GetModel() (*loader.Model, bool) {
+func (mr ModelRepository[T, K]) GetModel() (*loader.Model, bool) {
 	return mr.model, mr.model != nil
 }
-func (mr *ModelRepository[T, K]) setEnv(env *loader.Environment) error {
+func (mr ModelRepository[T, K]) setEnv(env *loader.Environment) error {
 	if mr.env != nil {
 		return errors.New("tried to reinitialize environment")
 	}
@@ -78,14 +77,14 @@ func (mr *ModelRepository[T, K]) setEnv(env *loader.Environment) error {
 	return nil
 }
 
-func (mr *ModelRepository[T, K]) Save(v T) (*T, error) {
+func (mr ModelRepository[T, K]) Save(v T) (*T, error) {
 	err := mr.env.Cr().Save(&v).Error
 	if err != nil {
 		return nil, err
 	}
 	return &v, nil
 }
-func (mr *ModelRepository[T, K]) Search(cond loader.Condition) ([]T, error) {
+func (mr ModelRepository[T, K]) Search(cond loader.Condition) ([]T, error) {
 	var vv []T
 	err := mr.env.Cr().Find(&vv).Error
 	if err != nil {
@@ -93,19 +92,19 @@ func (mr *ModelRepository[T, K]) Search(cond loader.Condition) ([]T, error) {
 	}
 	return vv, nil
 }
-func (mr *ModelRepository[T, K]) TableName() string {
+func (mr ModelRepository[T, K]) TableName() string {
 	return mr.tableName
 }
 
-func (mr *ModelRepository[T, K]) Methods() *loader.MethodsCollection {
+func (mr ModelRepository[T, K]) Methods() *loader.MethodsCollection {
 	return mr.model.Methods()
 }
 
-func (mr *ModelRepository[T, K]) Fields() *loader.FieldsCollection {
+func (mr ModelRepository[T, K]) Fields() *loader.FieldsCollection {
 	return mr.Fields()
 }
 
-func (mr *ModelRepository[T, K]) GetFieldName(s string) loader.FieldName {
+func (mr ModelRepository[T, K]) GetFieldName(s string) loader.FieldName {
 	dd, ok := mr.model.Fields().Get(s)
 	if !ok {
 		return nil
@@ -113,7 +112,7 @@ func (mr *ModelRepository[T, K]) GetFieldName(s string) loader.FieldName {
 	return loader.NewFieldName(dd.Name(), dd.JSON())
 }
 
-func (mr *ModelRepository[T, K]) Delete(v T) (*T, error) {
+func (mr ModelRepository[T, K]) Delete(v T) (*T, error) {
 	err := mr.env.Cr().Delete(&v).Error
 	if err != nil {
 		return nil, err
@@ -121,7 +120,7 @@ func (mr *ModelRepository[T, K]) Delete(v T) (*T, error) {
 	return &v, nil
 }
 
-func (mr *ModelRepository[T, K]) FindById(id K) (*T, error) {
+func (mr ModelRepository[T, K]) FindById(id K) (*T, error) {
 	var v T
 	err := mr.env.Cr().First(&v, id).Error
 	if err != nil {
@@ -130,7 +129,7 @@ func (mr *ModelRepository[T, K]) FindById(id K) (*T, error) {
 	return &v, nil
 }
 
-func (mr *ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions) (*T, error) {
+func (mr ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions) (*T, error) {
 	var v T
 	db := mr.env.Cr()
 	if len(options.EagerLoad) > 0 {
@@ -145,7 +144,7 @@ func (mr *ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions
 	return &v, nil
 }
 
-func (mr *ModelRepository[T, K]) FindByIds(ids []K) ([]T, error) {
+func (mr ModelRepository[T, K]) FindByIds(ids []K) ([]T, error) {
 	var v []T
 	err := mr.env.Cr().Find(&v, ids).Error
 	if err != nil {
@@ -154,7 +153,7 @@ func (mr *ModelRepository[T, K]) FindByIds(ids []K) ([]T, error) {
 	return v, nil
 }
 
-func (mr *ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOptions) ([]T, error) {
+func (mr ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOptions) ([]T, error) {
 	var v []T
 	db := mr.env.Cr()
 	if len(options.EagerLoad) > 0 {
@@ -169,7 +168,7 @@ func (mr *ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOpti
 	return v, nil
 }
 
-func (mr *ModelRepository[T, K]) IsMixin() bool {
+func (mr ModelRepository[T, K]) IsMixin() bool {
 	if mr.model.Options()&tools.MixinModel > 0 {
 		return true
 	}
@@ -177,7 +176,7 @@ func (mr *ModelRepository[T, K]) IsMixin() bool {
 }
 
 // IsManual returns true if this is a manual model.
-func (mr *ModelRepository[T, K]) IsManual() bool {
+func (mr ModelRepository[T, K]) IsManual() bool {
 	if mr.model.Options()&tools.ManualModel > 0 {
 		return true
 	}
@@ -185,7 +184,7 @@ func (mr *ModelRepository[T, K]) IsManual() bool {
 }
 
 // isSystem returns true if this is a system model.
-func (mr *ModelRepository[T, K]) isSystem() bool {
+func (mr ModelRepository[T, K]) isSystem() bool {
 	if mr.model.Options()&tools.SystemModel > 0 {
 		return true
 	}
@@ -193,7 +192,7 @@ func (mr *ModelRepository[T, K]) isSystem() bool {
 }
 
 // isContext returns true if this is a context model.
-func (mr *ModelRepository[T, K]) isContext() bool {
+func (mr ModelRepository[T, K]) isContext() bool {
 	if mr.model.Options()&tools.ContextsModel > 0 {
 		return true
 	}
@@ -201,7 +200,7 @@ func (mr *ModelRepository[T, K]) isContext() bool {
 }
 
 // IsM2MLink returns true if this is an M2M Link model.
-func (mr *ModelRepository[T, K]) IsM2MLink() bool {
+func (mr ModelRepository[T, K]) IsM2MLink() bool {
 	if mr.model.Options()&tools.Many2ManyLinkModel > 0 {
 		return true
 	}
@@ -209,12 +208,12 @@ func (mr *ModelRepository[T, K]) IsM2MLink() bool {
 }
 
 // IsTransient returns true if this Model is transient
-func (mr *ModelRepository[T, K]) IsTransient() bool {
+func (mr ModelRepository[T, K]) IsTransient() bool {
 	return mr.model.Options() == tools.TransientModel
 }
 
 // hasParentField returns true if this model is recursive and has a Parent field.
-func (mr *ModelRepository[T, K]) hasParentField() bool {
+func (mr ModelRepository[T, K]) hasParentField() bool {
 	_, parentExists := mr.Fields().Get("Parent")
 	return parentExists
 }

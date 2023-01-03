@@ -11,6 +11,10 @@ type RecordOptions struct {
 	EagerLoad []string
 }
 
+//	type RecordTypes interface {
+//		~HexyaBaseModel| ~HexyaAbstractModel| ~HexyaTransientModel
+//	}
+//
 // PrimaryKeys represent the list of field types that can act as primary keys to a table
 type PrimaryKeys interface {
 	~int64 | ~int32 | ~int16 | ~int8 | ~uint | ~uint64 | ~uint32 | ~uint16 | ~uint8 | string
@@ -18,16 +22,16 @@ type PrimaryKeys interface {
 
 // Repository Type of repository to represent any query link between
 type Repository[T any, K PrimaryKeys] interface {
-	Save(v T) (*T, error)
-	Search(cond loader.Condition) ([]T, error)
+	Save(v T) error
+	Search(cond loader.Condition) (interface{}, error)
 	TableName() string
-	Delete(v T) (*T, error)
+	Delete(v interface{}) (interface{}, error)
 	validateAndInitialize(modelLoader *ModelLoader) error
 	setEnv(v *loader.Environment) error
-	FindById(id K) (*T, error)
-	FindByIdWithOptions(id K, options RecordOptions) (*T, error)
-	FindByIds(id []K) ([]T, error)
-	FindByIdsWithOptions(id []K, option RecordOptions) ([]T, error)
+	FindById(id K) (interface{}, error)
+	FindByIdWithOptions(id K, options RecordOptions) (interface{}, error)
+	FindByIds(id []K) (interface{}, error)
+	FindByIdsWithOptions(id []K, option RecordOptions) (interface{}, error)
 	Methods() *loader.MethodsCollection
 	Fields() *loader.FieldsCollection
 	GetFieldName(s string) loader.FieldName
@@ -42,7 +46,7 @@ type Repository[T any, K PrimaryKeys] interface {
 }
 
 // ModelRepository default implementation of model repository
-type ModelRepository[T DataModel, K PrimaryKeys] struct {
+type ModelRepository[T any, K PrimaryKeys] struct {
 	env       *loader.Environment
 	tableName string
 	model     *loader.Model
@@ -76,15 +80,27 @@ func (mr ModelRepository[T, K]) setEnv(env *loader.Environment) error {
 	mr.env = env
 	return nil
 }
-
-func (mr ModelRepository[T, K]) Save(v T) (*T, error) {
-	err := mr.env.Cr().Save(&v).Error
-	if err != nil {
-		return nil, err
+func (mr ModelRepository[T, K]) validate() error {
+	if mr.env == nil {
+		return errors.New("invalid state: repository not initialized")
 	}
-	return &v, nil
+	if mr.env.Cr() == nil {
+		return errors.New("invalid state: database not initialized")
+	}
+	return nil
 }
-func (mr ModelRepository[T, K]) Search(cond loader.Condition) ([]T, error) {
+func (mr ModelRepository[T, K]) Save(v interface{}) error {
+	err := mr.validate()
+	if err != nil {
+		return err
+	}
+	err = mr.env.Cr().Save(v).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (mr ModelRepository[T, K]) Search(cond loader.Condition) (interface{}, error) {
 	var vv []T
 	err := mr.env.Cr().Find(&vv).Error
 	if err != nil {
@@ -112,15 +128,15 @@ func (mr ModelRepository[T, K]) GetFieldName(s string) loader.FieldName {
 	return loader.NewFieldName(dd.Name(), dd.JSON())
 }
 
-func (mr ModelRepository[T, K]) Delete(v T) (*T, error) {
+func (mr ModelRepository[T, K]) Delete(v interface{}) (interface{}, error) {
 	err := mr.env.Cr().Delete(&v).Error
 	if err != nil {
-		return nil, err
+		return *new(T), err
 	}
-	return &v, nil
+	return v, nil
 }
 
-func (mr ModelRepository[T, K]) FindById(id K) (*T, error) {
+func (mr ModelRepository[T, K]) FindById(id K) (interface{}, error) {
 	var v T
 	err := mr.env.Cr().First(&v, id).Error
 	if err != nil {
@@ -129,7 +145,7 @@ func (mr ModelRepository[T, K]) FindById(id K) (*T, error) {
 	return &v, nil
 }
 
-func (mr ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions) (*T, error) {
+func (mr ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions) (interface{}, error) {
 	var v T
 	db := mr.env.Cr()
 	if len(options.EagerLoad) > 0 {
@@ -144,7 +160,7 @@ func (mr ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions)
 	return &v, nil
 }
 
-func (mr ModelRepository[T, K]) FindByIds(ids []K) ([]T, error) {
+func (mr ModelRepository[T, K]) FindByIds(ids []K) (interface{}, error) {
 	var v []T
 	err := mr.env.Cr().Find(&v, ids).Error
 	if err != nil {
@@ -153,7 +169,7 @@ func (mr ModelRepository[T, K]) FindByIds(ids []K) ([]T, error) {
 	return v, nil
 }
 
-func (mr ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOptions) ([]T, error) {
+func (mr ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOptions) (any, error) {
 	var v []T
 	db := mr.env.Cr()
 	if len(options.EagerLoad) > 0 {

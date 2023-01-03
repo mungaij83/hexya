@@ -24,17 +24,17 @@ type HexyaBaseModel struct {
 	DisplayName string    `json:"display_name" hexya:"type=compute;display_name=Display Name;noCopy"`
 }
 
-func (HexyaBaseModel) OrderFields() []string {
+func (_ HexyaBaseModel) OrderFields() []string {
 	return []string{"CreateUID"}
 }
-func (HexyaBaseModel) IsModel() bool {
+func (_ HexyaBaseModel) IsModel() bool {
 	return true
 }
-func (HexyaBaseModel) IsTransient() bool {
+func (_ HexyaBaseModel) IsTransient() bool {
 	return false
 }
 
-func (HexyaBaseModel) IsAbstract() bool {
+func (_ HexyaBaseModel) IsAbstract() bool {
 	return false
 }
 

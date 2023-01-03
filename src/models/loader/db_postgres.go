@@ -119,14 +119,15 @@ func (d *postgresAdapter) Connect() (rerr error) {
 	autoCreate := d.connector.connParams.AutoCreate
 	if autoCreate {
 		rerr = d.connector.DBConnect(d.connectionString(d.connector.DBParams(), false))
-
+		if rerr != nil {
+			return
+		}
 		if !d.connector.createDatabaseIfNotExist() {
 			log.Debug("Failed to create database: ", "value", rerr)
-		} else {
-			// Close database and reconnect to the created database
-			d.connector.DBClose()
-			rerr = d.connector.DBConnect(d.connectionString(d.connector.connParams, true))
 		}
+		// Close database and reconnect to the created database
+		d.connector.DBClose()
+		rerr = d.connector.DBConnect(d.connectionString(d.connector.connParams, true))
 	} else {
 		rerr = d.connector.DBConnect(d.connectionString(d.connector.DBParams(), false))
 	}
@@ -333,7 +334,5 @@ func (d *postgresAdapter) Close() (ok bool) {
 			ok = false
 		}
 	}()
-	d.Connector().DBClose()
-	ok = true
 	return
 }

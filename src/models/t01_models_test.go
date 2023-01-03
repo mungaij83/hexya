@@ -35,10 +35,17 @@ func TestModelDeclaration(t *testing.T) {
 		// Make it difficult to use the BaseModel, methods in base are not detected as implemented by the other models
 		// Also some methods are implemented with interface type as argument or return typ for the reason above, maybe a work around is available.
 		pp := ProfileRepository[ProfileModel, int64]{}
-		Registry.add(&pp)
+		// Save before should result in an error
 		err := pp.Save(&tt)
-		log.Error("Failed to add profile", "error", err)
+		log.Debug("Failed to add profile", "error", err)
 		So(err, ShouldNotBeNil)
+		// Add to registry
+		err = Registry.add(pp)
+		So(err, ShouldBeNil)
+		// Save after adding model to registry
+		err = pp.Save(&tt)
+		log.Debug("Failed to add profile", "error", err)
+		So(err, ShouldBeNil)
 
 	})
 }

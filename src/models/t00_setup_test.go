@@ -84,9 +84,10 @@ func initializeTests() {
 }
 
 func tearDownTests() {
-	TestAdapter.Connector().DBClose()
 	keepDB := os.Getenv("HEXYA_KEEP_TEST_DB")
-	if keepDB != "" {
+	if !TestAdapter.Connector().DBParams().AutoCreate {
+		log.Debug("Keep database", "value", keepDB)
+		TestAdapter.Close()
 		return
 	}
 	fmt.Printf("Tearing down database for models\n")

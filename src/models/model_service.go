@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"github.com/hexya-erp/hexya/src/tools"
+	"gorm.io/gorm"
 )
 
 // RecordOptions extra options to be used with GORM models
@@ -48,26 +49,30 @@ type Repository[T any, K PrimaryKeys] interface {
 // ModelRepository default implementation of model repository
 type ModelRepository[T any, K PrimaryKeys] struct {
 	env       *loader.Environment
+	db        *gorm.DB
 	tableName string
 	model     *loader.Model
 }
 
-func (mr ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) error {
+func (mr ModelRepository[T, K]) connection() *gorm.DB {
 	if mr.env == nil {
-		return errors.New("environment is not set for this repository, call set env first")
+		return loader.GetAdapter().Connector().DB()
 	}
+	return mr.env.Cr()
+}
+func (mr ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) error {
 	mdl, err := loader.LoadBaseModel(new(T))
 	if err != nil {
 		return err
 	}
 	// Migrate this model
-	err = mr.env.Cr().AutoMigrate(new(T))
+	err = mr.connection().AutoMigrate(*new(T))
 	if err != nil {
 		return err
 	}
 	mr.model = mdl
 	// Resolve model table name
-	mr.tableName = mr.env.Cr().Unscoped().Model(new(T)).Name()
+	mr.tableName = mr.connection().Unscoped().Model(new(T)).Name()
 	return nil
 }
 func (mr ModelRepository[T, K]) GetModel() (*loader.Model, bool) {
@@ -81,10 +86,7 @@ func (mr ModelRepository[T, K]) setEnv(env *loader.Environment) error {
 	return nil
 }
 func (mr ModelRepository[T, K]) validate() error {
-	if mr.env == nil {
-		return errors.New("invalid state: repository not initialized")
-	}
-	if mr.env.Cr() == nil {
+	if mr.env != nil && mr.env.Cr() == nil {
 		return errors.New("invalid state: database not initialized")
 	}
 	return nil
@@ -94,7 +96,7 @@ func (mr ModelRepository[T, K]) Save(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = mr.env.Cr().Save(v).Error
+	err = mr.connection().Save(v).Error
 	if err != nil {
 		return err
 	}
@@ -102,7 +104,7 @@ func (mr ModelRepository[T, K]) Save(v interface{}) error {
 }
 func (mr ModelRepository[T, K]) Search(cond loader.Condition) (interface{}, error) {
 	var vv []T
-	err := mr.env.Cr().Find(&vv).Error
+	err := mr.connection().Find(&vv).Error
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +131,7 @@ func (mr ModelRepository[T, K]) GetFieldName(s string) loader.FieldName {
 }
 
 func (mr ModelRepository[T, K]) Delete(v interface{}) (interface{}, error) {
-	err := mr.env.Cr().Delete(&v).Error
+	err := mr.connection().Delete(&v).Error
 	if err != nil {
 		return *new(T), err
 	}
@@ -138,7 +140,7 @@ func (mr ModelRepository[T, K]) Delete(v interface{}) (interface{}, error) {
 
 func (mr ModelRepository[T, K]) FindById(id K) (interface{}, error) {
 	var v T
-	err := mr.env.Cr().First(&v, id).Error
+	err := mr.connection().First(&v, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +149,7 @@ func (mr ModelRepository[T, K]) FindById(id K) (interface{}, error) {
 
 func (mr ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions) (interface{}, error) {
 	var v T
-	db := mr.env.Cr()
+	db := mr.connection()
 	if len(options.EagerLoad) > 0 {
 		for _, opt := range options.EagerLoad {
 			db = db.Preload(opt)
@@ -162,7 +164,7 @@ func (mr ModelRepository[T, K]) FindByIdWithOptions(id K, options RecordOptions)
 
 func (mr ModelRepository[T, K]) FindByIds(ids []K) (interface{}, error) {
 	var v []T
-	err := mr.env.Cr().Find(&v, ids).Error
+	err := mr.connection().Find(&v, ids).Error
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +173,7 @@ func (mr ModelRepository[T, K]) FindByIds(ids []K) (interface{}, error) {
 
 func (mr ModelRepository[T, K]) FindByIdsWithOptions(id []K, options RecordOptions) (any, error) {
 	var v []T
-	db := mr.env.Cr()
+	db := mr.connection()
 	if len(options.EagerLoad) > 0 {
 		for _, opt := range options.EagerLoad {
 			db.Preload(opt)

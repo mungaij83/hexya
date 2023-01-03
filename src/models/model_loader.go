@@ -122,6 +122,9 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 func (ml ModelLoader) LoadModel(data interface{}) (map[string]loader.FieldDefinition, error) {
 	modelFields := make(map[string]loader.FieldDefinition)
 	fieldTypes := reflect.TypeOf(data)
+	if fieldTypes.Kind() == reflect.Ptr {
+		fieldTypes = fieldTypes.Elem()
+	}
 	log.Info("Number of fields:", "fields", fieldTypes.NumField())
 	for i := 0; i < fieldTypes.NumField(); i++ {
 		f := fieldTypes.Field(i)

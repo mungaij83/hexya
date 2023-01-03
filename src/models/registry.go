@@ -15,6 +15,8 @@
 package models
 
 import (
+	"errors"
+	"fmt"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"github.com/hexya-erp/hexya/src/tools/strutils"
 	"sync"
@@ -30,6 +32,7 @@ var Registry *modelCollection
 
 type modelCollection struct {
 	sync.RWMutex
+	loader              *ModelLoader
 	bootstrapped        bool
 	registryByTableName map[string]Repository[any, int64]
 	sequences           map[string]*Sequence
@@ -80,11 +83,21 @@ func (mc *modelCollection) MustGetSequence(nameOrJSON string) *Sequence {
 }
 
 // add the given Model to the modelCollection
-func (mc *modelCollection) add(mi Repository[any, int64]) {
-	if _, exists := mc.Get(mi.TableName()); exists {
-		log.Panic("Trying to add already existing model", "model", mi.TableName())
+func (mc *modelCollection) add(mi Repository[any, int64]) error {
+	// Initialize repository
+	err := mi.validateAndInitialize(mc.loader)
+	if err != nil {
+		log.Warn("Failed to initialize model repository", "Error", err)
+		return err
 	}
+	// Initialize table
+	if _, exists := mc.Get(mi.TableName()); exists {
+		log.Warn("Trying to add already existing model", "model", mi.TableName())
+		return errors.New(fmt.Sprintf("trying to initialize an existing model: %v", mi.TableName()))
+	}
+	// Register model
 	mc.registryByTableName[mi.TableName()] = mi
+	return nil
 }
 
 // add the given Model to the modelCollection
@@ -100,6 +113,7 @@ func (mc *modelCollection) addSequence(s *Sequence) {
 // newModelCollection returns a pointer to a new modelCollection
 func newModelCollection() *modelCollection {
 	return &modelCollection{
+		loader:              &ModelLoader{},
 		registryByTableName: make(map[string]Repository[any, int64]),
 		sequences:           make(map[string]*Sequence),
 	}

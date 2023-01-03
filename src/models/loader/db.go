@@ -203,6 +203,7 @@ func (db *DatabaseConnector) MustExec(query string, args ...interface{}) int64 {
 		err = db.DB().Exec(query).Count(&count).Error
 	}
 	if err != nil {
+		log.Warn("Failed to execute query:", "error", err.Error())
 		count = -1
 	}
 	return count

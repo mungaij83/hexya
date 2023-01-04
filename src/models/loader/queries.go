@@ -147,7 +147,7 @@ func (q *Query) predicateSQLClause(p predicate) (string, SQLParams) {
 		return q.conditionSQLClause(p.cond)
 	}
 
-	fi := q.recordSet.model.GetRelatedFieldInfo(joinFieldNames(p.exprs, ExprSep))
+	fi := q.recordSet.model.GetRelatedFieldInfo(JoinFieldNames(p.exprs, ExprSep))
 	if fi.FieldType.IsFKRelationType() {
 		// If we have a relation type with a 0 as foreign key, we substitute for nil
 		if valInt, err := nbutils.CastToInteger(p.arg); err == nil && valInt == 0 {
@@ -233,7 +233,7 @@ func (q *Query) sqlLimitOffsetClause() string {
 func (q *Query) sqlOrderByClause() string {
 	resSlice := make([]string, len(q.orders))
 	for i, order := range q.orders {
-		_, _, resSlice[i] = q.joinedFieldExpression(splitFieldNames(order.field, ExprSep), true, i)
+		_, _, resSlice[i] = q.joinedFieldExpression(SplitFieldNames(order.field, ExprSep), true, i)
 		if order.desc {
 			resSlice[i] += " DESC"
 		}
@@ -249,7 +249,7 @@ func (q *Query) sqlOrderByClause() string {
 func (q *Query) sqlCtxOrderBy() string {
 	resSlice := make([]string, len(q.ctxOrders))
 	for i, order := range q.ctxOrders {
-		resSlice[i], _, _ = q.joinedFieldExpression(splitFieldNames(order.field, ExprSep), false, 0)
+		resSlice[i], _, _ = q.joinedFieldExpression(SplitFieldNames(order.field, ExprSep), false, 0)
 		if order.desc {
 			resSlice[i] += " DESC"
 		}
@@ -267,14 +267,14 @@ func (q *Query) sqlOrderByClauseForGroupBy(aggFncts map[string]string) string {
 	for i, order := range q.orders {
 		aggFnct := aggFncts[order.field.JSON()]
 		if aggFnct == "" {
-			_, _, jfe := q.joinedFieldExpression(splitFieldNames(order.field, ExprSep), true, i)
+			_, _, jfe := q.joinedFieldExpression(SplitFieldNames(order.field, ExprSep), true, i)
 			if order.desc {
 				jfe += " DESC"
 			}
 			resSlice[i] = jfe
 			continue
 		}
-		_, _, jfe := q.joinedFieldExpression(splitFieldNames(order.field, ExprSep), true, i)
+		_, _, jfe := q.joinedFieldExpression(SplitFieldNames(order.field, ExprSep), true, i)
 		resSlice[i] = fmt.Sprintf("%s(%s)", aggFnct, jfe)
 		if order.desc {
 			resSlice[i] += " DESC"
@@ -291,7 +291,7 @@ func (q *Query) sqlOrderByClauseForGroupBy(aggFncts map[string]string) string {
 func (q *Query) sqlGroupByClause() string {
 	var fExprs [][]FieldName
 	for _, group := range q.groups {
-		oExprs := splitFieldNames(group, ExprSep)
+		oExprs := SplitFieldNames(group, ExprSep)
 		fExprs = append(fExprs, oExprs)
 	}
 	resSlice := make([]string, len(q.groups))
@@ -311,7 +311,7 @@ func (q *Query) sqlGroupByClause() string {
 func (q *Query) sqlCtxGroupByClause() string {
 	var fExprs [][]FieldName
 	for _, group := range q.ctxGroups {
-		oExprs := splitFieldNames(group, ExprSep)
+		oExprs := SplitFieldNames(group, ExprSep)
 		fExprs = append(fExprs, oExprs)
 	}
 	resSlice := make([]string, len(q.ctxGroups))
@@ -326,7 +326,7 @@ func (q *Query) sqlCtxGroupByClause() string {
 func (q *Query) deleteQuery() (string, SQLParams) {
 	adapter := q.adapter
 	sql, args := q.sqlWhereClause(false)
-	delQuery := fmt.Sprintf(`DELETE FROM %s %s`, adapter.quoteTableName(q.recordSet.model.tableName), sql)
+	delQuery := fmt.Sprintf(`DELETE FROM %s %s`, adapter.QuoteTableName(q.recordSet.model.tableName), sql)
 	return delQuery, args
 }
 
@@ -355,7 +355,7 @@ func (q *Query) insertQuery(data FieldMap) (string, SQLParams) {
 		vals = append(vals, v)
 		i++
 	}
-	tableName := adapter.quoteTableName(q.recordSet.model.tableName)
+	tableName := adapter.QuoteTableName(q.recordSet.model.tableName)
 	fields := strings.Join(cols, ", ")
 	values := "?" + strings.Repeat(", ?", i-1)
 	sql = fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) RETURNING id", tableName, fields, values)
@@ -431,7 +431,7 @@ func (q *Query) selectGroupQuery(fieldsList []FieldName, aggFncts map[string]str
 	fieldExprs, _ := q.selectData(fieldsList, true)
 	fieldsList = []FieldName{}
 	for _, fe := range fieldExprs {
-		fieldsList = append(fieldsList, joinFieldNames(fe, ExprSep))
+		fieldsList = append(fieldsList, JoinFieldNames(fe, ExprSep))
 	}
 	// Get base query
 	baseQuery, baseArgs, _ := q.selectCommonQuery(fieldsList)
@@ -456,24 +456,24 @@ func (q *Query) selectData(fields []FieldName, withCtx bool) ([][]FieldName, [][
 	var fieldExprs [][]FieldName
 	fieldsExprsMap := make(map[string][]FieldName)
 	for _, f := range fields {
-		fExpr := splitFieldNames(f, ExprSep)
-		if _, ok := fieldsExprsMap[joinFieldNames(fExpr, ExprSep).JSON()]; !ok {
-			fieldExprs = append(fieldExprs, splitFieldNames(f, ExprSep))
-			fieldsExprsMap[joinFieldNames(fExpr, ExprSep).JSON()] = fExpr
+		fExpr := SplitFieldNames(f, ExprSep)
+		if _, ok := fieldsExprsMap[JoinFieldNames(fExpr, ExprSep).JSON()]; !ok {
+			fieldExprs = append(fieldExprs, SplitFieldNames(f, ExprSep))
+			fieldsExprsMap[JoinFieldNames(fExpr, ExprSep).JSON()] = fExpr
 		}
 	}
 	// Add 'order by' exprs removing duplicates
 	oExprs := q.getOrderByExpressions(withCtx)
 	for _, oExpr := range oExprs {
-		if _, ok := fieldsExprsMap[joinFieldNames(oExpr, ExprSep).JSON()]; !ok {
+		if _, ok := fieldsExprsMap[JoinFieldNames(oExpr, ExprSep).JSON()]; !ok {
 			fieldExprs = append(fieldExprs, oExpr)
-			fieldsExprsMap[joinFieldNames(oExpr, ExprSep).JSON()] = oExpr
+			fieldsExprsMap[JoinFieldNames(oExpr, ExprSep).JSON()] = oExpr
 		}
 	}
 	// Add 'Group by' exprs removing duplicates
 	gExprs := q.getGroupByExpressions()
 	for _, gExpr := range gExprs {
-		if _, ok := fieldsExprsMap[joinFieldNames(gExpr, ExprSep).JSON()]; !ok {
+		if _, ok := fieldsExprsMap[JoinFieldNames(gExpr, ExprSep).JSON()]; !ok {
 			fieldExprs = append(fieldExprs, gExpr)
 		}
 	}
@@ -507,7 +507,7 @@ func (q *Query) updateQuery(data FieldMap) (string, SQLParams) {
 		vals[i] = v
 		i++
 	}
-	tableName := adapter.quoteTableName(q.recordSet.model.tableName)
+	tableName := adapter.QuoteTableName(q.recordSet.model.tableName)
 	updates := strings.Join(cols, ", ")
 	whereSQL, args := q.sqlWhereClause(false)
 	sql = fmt.Sprintf("UPDATE %s SET %s %s", tableName, updates, whereSQL)
@@ -539,12 +539,12 @@ func (q *Query) fieldsSQL(fieldExprs [][]FieldName) (string, map[string]string) 
 func (q *Query) fieldsGroupSQL(fieldExprs [][]FieldName, aggFncts map[string]string) string {
 	fStr := make([]string, len(fieldExprs))
 	for i, exprs := range fieldExprs {
-		aggFnct := aggFncts[joinFieldNames(exprs, ExprSep).JSON()]
+		aggFnct := aggFncts[JoinFieldNames(exprs, ExprSep).JSON()]
 		if aggFnct == "" {
-			fStr[i] = joinFieldNames(exprs, sqlSep).JSON()
+			fStr[i] = JoinFieldNames(exprs, sqlSep).JSON()
 			continue
 		}
-		fStr[i] = fmt.Sprintf("%s(%s) AS %s", aggFnct, joinFieldNames(exprs, sqlSep).JSON(), joinFieldNames(exprs, sqlSep).JSON())
+		fStr[i] = fmt.Sprintf("%s(%s) AS %s", aggFnct, JoinFieldNames(exprs, sqlSep).JSON(), JoinFieldNames(exprs, sqlSep).JSON())
 	}
 	return strings.Join(fStr, ", ")
 }
@@ -561,7 +561,7 @@ func (q *Query) joinedFieldExpression(exprs []FieldName, withAlias bool, aliasIn
 	joins := q.generateTableJoins(exprs)
 	lastJoin := joins[len(joins)-1]
 	if withAlias {
-		fAlias := joinFieldNames(exprs, sqlSep).JSON()
+		fAlias := JoinFieldNames(exprs, sqlSep).JSON()
 		oldAlias := fAlias
 		if len(fAlias) > maxSQLidentifierLength {
 			fAlias = fmt.Sprintf("f%d", aliasIndex)
@@ -578,7 +578,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 	var joins []tableJoin
 	curMI := q.recordSet.model
 	// Create the tableJoin for the current table
-	currentTableName := adapter.quoteTableName(curMI.tableName)
+	currentTableName := adapter.QuoteTableName(curMI.tableName)
 	var curExpr FieldName
 	if len(fieldExprs) > 0 {
 		curExpr = fieldExprs[0]
@@ -595,7 +595,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 	for i, expr := range fieldExprs {
 		fi, ok := curMI.fields.Get(expr.JSON())
 		if !ok {
-			log.Panic("Unparsable Expression", "expr", joinFieldNames(fieldExprs, ExprSep))
+			log.Panic("Unparsable Expression", "expr", JoinFieldNames(fieldExprs, ExprSep))
 		}
 		if fi.RelatedModel == nil || (i == exprsLen-1 && fi.FieldType.IsFKRelationType()) {
 			// Don't create an extra join if our field is not a relation field
@@ -612,13 +612,13 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 		case fieldtype.Many2One, fieldtype.One2One:
 			field, otherField = ID, expr
 		case fieldtype.One2Many, fieldtype.Rev2One:
-			field, otherField = fi.RelatedModel.FieldName(fi.reverseFK), ID
+			field, otherField = fi.RelatedModel.FieldName(fi.ReverseFK), ID
 			if tjExpr == nil {
 				tjExpr = ID
 			}
 		case fieldtype.Many2Many:
 			// Add relation table join
-			relationTableName := adapter.quoteTableName(fi.m2mRelModel.tableName)
+			relationTableName := adapter.QuoteTableName(fi.m2mRelModel.tableName)
 			alias = fmt.Sprintf("%s%s%s", alias, sqlSep, fi.m2mRelModel.tableName)
 			tj := tableJoin{
 				tableName:  relationTableName,
@@ -626,7 +626,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 				field:      fi.m2mRelModel.FieldName(fi.m2mOurField.name),
 				otherTable: curTJ,
 				otherField: ID,
-				alias:      adapter.quoteTableName(alias),
+				alias:      adapter.QuoteTableName(alias),
 				expr:       fi.m2mRelModel.FieldName(fi.m2mTheirField.name),
 			}
 			joins = append(joins, tj)
@@ -638,7 +638,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 			}
 		}
 
-		linkedTableName := adapter.quoteTableName(fi.RelatedModel.tableName)
+		linkedTableName := adapter.QuoteTableName(fi.RelatedModel.tableName)
 		alias = fmt.Sprintf("%s%s%s", alias, sqlSep, fi.RelatedModel.tableName)
 		nextTJ := tableJoin{
 			tableName:  linkedTableName,
@@ -646,7 +646,7 @@ func (q *Query) generateTableJoins(fieldExprs []FieldName) []tableJoin {
 			field:      field,
 			otherTable: curTJ,
 			otherField: otherField,
-			alias:      adapter.quoteTableName(alias),
+			alias:      adapter.QuoteTableName(alias),
 			expr:       tjExpr,
 		}
 		joins = append(joins, nextTJ)
@@ -674,7 +674,7 @@ func (q *Query) tablesSQL(fExprs [][]FieldName) (string, map[string]string) {
 		tJoins := q.generateTableJoins(f)
 		for _, j := range tJoins {
 			if _, exists := joinsMap[j.alias]; !exists {
-				joinsMap[j.alias] = adapter.quoteTableName(fmt.Sprintf("T%d", aliasIndex))
+				joinsMap[j.alias] = adapter.QuoteTableName(fmt.Sprintf("T%d", aliasIndex))
 				if aliasIndex == 0 {
 					joinsMap[j.alias] = j.alias
 				}
@@ -689,7 +689,7 @@ func (q *Query) tablesSQL(fExprs [][]FieldName) (string, map[string]string) {
 // thisTable returns the quoted table name of this query's recordset table
 func (q *Query) thisTable() string {
 	adapter := q.adapter
-	return adapter.quoteTableName(q.recordSet.model.tableName)
+	return adapter.QuoteTableName(q.recordSet.model.tableName)
 }
 
 // isEmpty returns true if this query is empty
@@ -729,7 +729,7 @@ func (q *Query) substituteConditionExprs(substMap map[FieldName][]FieldName) {
 	for i, order := range q.orders {
 		for k, v := range substMap {
 			if order.field.JSON() == k.JSON() {
-				q.orders[i].field = joinFieldNames(v, ExprSep)
+				q.orders[i].field = JoinFieldNames(v, ExprSep)
 				break
 			}
 		}
@@ -737,7 +737,7 @@ func (q *Query) substituteConditionExprs(substMap map[FieldName][]FieldName) {
 	for i, group := range q.groups {
 		for k, v := range substMap {
 			if group.JSON() == k.JSON() {
-				q.groups[i] = joinFieldNames(v, ExprSep)
+				q.groups[i] = JoinFieldNames(v, ExprSep)
 				break
 			}
 		}
@@ -775,7 +775,7 @@ func (q *Query) getAllExpressions() [][]FieldName {
 func (q *Query) getOrderByExpressions(withCtx bool) [][]FieldName {
 	var exprs [][]FieldName
 	for _, order := range q.orders {
-		oExprs := splitFieldNames(order.field, ExprSep)
+		oExprs := SplitFieldNames(order.field, ExprSep)
 		exprs = append(exprs, oExprs)
 	}
 	if withCtx {
@@ -788,7 +788,7 @@ func (q *Query) getOrderByExpressions(withCtx bool) [][]FieldName {
 func (q *Query) getCtxOrderByExpressions() [][]FieldName {
 	var exprs [][]FieldName
 	for _, order := range q.ctxOrders {
-		oExprs := splitFieldNames(order.field, ExprSep)
+		oExprs := SplitFieldNames(order.field, ExprSep)
 		exprs = append(exprs, oExprs)
 	}
 	return exprs
@@ -798,7 +798,7 @@ func (q *Query) getCtxOrderByExpressions() [][]FieldName {
 func (q *Query) getGroupByExpressions() [][]FieldName {
 	var exprs [][]FieldName
 	for _, group := range q.groups {
-		exprs = append(exprs, splitFieldNames(group, ExprSep))
+		exprs = append(exprs, SplitFieldNames(group, ExprSep))
 	}
 	return exprs
 }

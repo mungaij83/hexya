@@ -38,7 +38,7 @@ func (rc *RecordCollection) computeFieldValues(params *FieldMap, fields ...strin
 			// probably because it was computed with another field
 			continue
 		}
-		newParams := rc.Call(fInfo.compute).(RecordData).Underlying().FieldMap
+		newParams := rc.Call(fInfo.Compute).(RecordData).Underlying().FieldMap
 		(*params).MergeWith(newParams, rc.model)
 	}
 }
@@ -141,26 +141,26 @@ func (rc *RecordCollection) applyMethod(methodName string) {
 }
 
 // processInverseMethods executes inverse methods of fields in the given
-// FieldMap if it exists. It returns a new FieldMap to be used by Create/Write
+// FieldMap if it exists. It returns a New FieldMap to be used by Create/Write
 // instead of the original one.
 func (rc *RecordCollection) processInverseMethods(data RecordData) {
 	md := NewModelDataFromRS(rc, data.Underlying().FieldMap)
 	for _, fieldName := range md.Underlying().Keys() {
 		fName := rc.model.FieldName(fieldName)
 		fi := rc.model.GetRelatedFieldInfo(fName)
-		if !fi.isComputedField() || rc.Env().Context().GetBool("hexya_force_compute_write") {
+		if !fi.IsComputedField() || rc.Env().Context().GetBool("hexya_force_compute_write") {
 			continue
 		}
 		if !md.Has(fName) {
 			continue
 		}
 		val := md.Get(fName)
-		if fi.inverse == "" {
+		if fi.Inverse == "" {
 			if typesutils.IsZero(val) || rc.Env().Context().GetBool("hexya_ignore_computed_fields") {
 				continue
 			}
 			log.Panic("Trying to write a computed field without inverse method", "model", rc.model.name, "field", fieldName)
 		}
-		rc.Call(fi.inverse, val)
+		rc.Call(fi.Inverse, val)
 	}
 }

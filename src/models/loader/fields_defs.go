@@ -96,17 +96,17 @@ func CreateFieldFromStruct(fc *FieldsCollection, fStruct interface{}, name strin
 		invisibleFunc:   val.FieldByName("InvisibleFunc").Interface().(func(Environment) (bool, Conditioner)),
 		unique:          unique,
 		index:           val.FieldByName("Index").Bool(),
-		compute:         compute,
-		inverse:         inverse,
+		Compute:         compute,
+		Inverse:         inverse,
 		depends:         val.FieldByName("Depends").Interface().([]string),
 		relatedPathStr:  val.FieldByName("Depends").String(),
-		noCopy:          noCopy,
+		NoCopy:          noCopy,
 		structField:     structField,
 		FieldType:       fieldType,
 		defaultFunc:     val.FieldByName("Default").Interface().(func(Environment) interface{}),
-		onChange:        onchange,
-		onChangeWarning: onchangeWarning,
-		onChangeFilters: onchangeFilters,
+		OnChange:        onchange,
+		OnChangeWarning: onchangeWarning,
+		OnChangeFilters: onchangeFilters,
 		constraint:      constraint,
 		contexts:        contexts,
 	}
@@ -188,7 +188,7 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "index":
 		f.index = value.(bool)
 	case "compute":
-		f.compute = value.(string)
+		f.Compute = value.(string)
 	case "depends":
 		f.depends = value.([]string)
 	case "selection":
@@ -206,21 +206,21 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "embed":
 		f.embed = value.(bool)
 	case "noCopy":
-		f.noCopy = value.(bool)
+		f.NoCopy = value.(bool)
 	case "defaultFunc":
 		f.defaultFunc = value.(func(Environment) interface{})
 	case "onDelete":
 		f.onDelete = value.(OnDeleteAction)
 	case "onChange":
-		f.onChange = value.(string)
+		f.OnChange = value.(string)
 	case "onChangeWarning":
-		f.onChangeWarning = value.(string)
+		f.OnChangeWarning = value.(string)
 	case "onChangeFilters":
-		f.onChangeFilters = value.(string)
+		f.OnChangeFilters = value.(string)
 	case "constraint":
 		f.constraint = value.(string)
 	case "inverse":
-		f.inverse = value.(string)
+		f.Inverse = value.(string)
 	case "filter":
 		f.filter = value.(*Condition)
 	case "relationModel":
@@ -232,7 +232,7 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "m2mTheirField":
 		f.m2mTheirField = value.(*Field)
 	case "reverseFK":
-		f.reverseFK = value.(string)
+		f.ReverseFK = value.(string)
 	case "translate":
 		switch value.(bool) {
 		case true:

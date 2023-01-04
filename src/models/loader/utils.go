@@ -57,7 +57,7 @@ func addNameSearchesToCondition(mi *Model, cond *Condition) {
 		if len(p.exprs) == 0 {
 			continue
 		}
-		fi := mi.GetRelatedFieldInfo(joinFieldNames(p.exprs, ExprSep))
+		fi := mi.GetRelatedFieldInfo(JoinFieldNames(p.exprs, ExprSep))
 		if !fi.isRelationField() {
 			continue
 		}
@@ -79,7 +79,7 @@ func addNameSearchToExprs(fi *Field, exprs []FieldName) []FieldName {
 	}
 	exprsToAppend := []FieldName{Name}
 	if relFI.isRelatedField() {
-		exprsToAppend = splitFieldNames(relFI.relatedPath, ExprSep)
+		exprsToAppend = SplitFieldNames(relFI.relatedPath, ExprSep)
 	}
 	exprs = append(exprs, exprsToAppend...)
 	return exprs
@@ -100,7 +100,7 @@ func filterOnDBFields(mi *Model, fields []FieldName, dontAddID ...bool) []FieldN
 	var res []FieldName
 	// Check if fields are stored
 	for _, field := range fields {
-		fieldExprs := splitFieldNames(field, ExprSep)
+		fieldExprs := SplitFieldNames(field, ExprSep)
 		fi := mi.fields.MustGet(fieldExprs[0].JSON())
 		fn := mi.FieldName(fi.json)
 		// Single field
@@ -115,7 +115,7 @@ func filterOnDBFields(mi *Model, fields []FieldName, dontAddID ...bool) []FieldN
 		if fi.RelatedModel == nil {
 			log.Panic("Field is not a relation in model", "field", fieldExprs[0], "model", mi.name)
 		}
-		subFieldName := joinFieldNames(fieldExprs[1:], ExprSep)
+		subFieldName := JoinFieldNames(fieldExprs[1:], ExprSep)
 		subFieldRes := filterOnDBFields(fi.RelatedModel, []FieldName{subFieldName}, dontAddID...)
 		if len(subFieldRes) == 0 {
 			// Our last expr is not stored after all, we don't add anything
@@ -129,18 +129,18 @@ func filterOnDBFields(mi *Model, fields []FieldName, dontAddID ...bool) []FieldN
 		for _, sfr := range subFieldRes {
 			resExprs := []FieldName{fn}
 			resExprs = append(resExprs, sfr)
-			res = append(res, joinFieldNames(resExprs, ExprSep))
+			res = append(res, JoinFieldNames(resExprs, ExprSep))
 		}
 	}
 	if len(dontAddID) == 0 || !dontAddID[0] {
-		res = addIDIfNotPresent(res)
+		res = AddIDIfNotPresent(res)
 	}
 	return res
 }
 
-// addIDIfNotPresent returns a new fields slice including ID if it
+// AddIDIfNotPresent returns a new fields slice including ID if it
 // is not already present. Otherwise returns the original slice.
-func addIDIfNotPresent(fields []FieldName) []FieldName {
+func AddIDIfNotPresent(fields []FieldName) []FieldName {
 	var hadID bool
 	for _, fName := range fields {
 		if fName.JSON() == "id" {
@@ -223,7 +223,7 @@ func appendPredicateToSerial(res []interface{}, predicate predicate) []interface
 	if predicate.isCond {
 		res = append(res, serializePredicates(predicate.cond.predicates)...)
 	} else {
-		res = append(res, []interface{}{joinFieldNames(predicate.exprs, ExprSep).JSON(), predicate.operator, predicate.arg})
+		res = append(res, []interface{}{JoinFieldNames(predicate.exprs, ExprSep).JSON(), predicate.operator, predicate.arg})
 	}
 	return res
 }
@@ -258,8 +258,8 @@ func cartesianProductSlices(records ...[]*RecordCollection) []*RecordCollection 
 	}
 }
 
-// joinFieldNames returns a field name that is the join of fn with sep
-func joinFieldNames(fn []FieldName, sep string) FieldName {
+// JoinFieldNames returns a field name that is the join of fn with sep
+func JoinFieldNames(fn []FieldName, sep string) FieldName {
 	var ntoks, jtoks []string
 	for _, f := range fn {
 		ntoks = append(ntoks, f.Name())
@@ -271,8 +271,8 @@ func joinFieldNames(fn []FieldName, sep string) FieldName {
 	}
 }
 
-// splitFieldNames splits the field name at sep, returning the result as a slice
-func splitFieldNames(f FieldName, sep string) []FieldName {
+// SplitFieldNames splits the field name at sep, returning the result as a slice
+func SplitFieldNames(f FieldName, sep string) []FieldName {
 	ntoks := strings.Split(f.Name(), sep)
 	jtoks := strings.Split(f.JSON(), sep)
 	if len(ntoks) != len(jtoks) {

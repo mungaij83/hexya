@@ -153,6 +153,13 @@ func (fc *FieldsCollection) Model() *Model {
 	return fc.model
 }
 
+func (fc *FieldsCollection) NameRegistry() map[string]*Field {
+	return fc.registryByName
+}
+func (fc *FieldsCollection) JsonRegistry() map[string]*Field {
+	return fc.registryByJSON
+}
+
 // newFieldsCollection returns a pointer to a new empty FieldsCollection with
 // all maps initialized.
 func newFieldsCollection() *FieldsCollection {
@@ -180,7 +187,7 @@ func (fc *FieldsCollection) register(fInfo *Field) {
 	jsonName := fInfo.json
 	fc.registryByName[name] = fInfo
 	fc.registryByJSON[jsonName] = fInfo
-	if fInfo.isComputedField() {
+	if fInfo.IsComputedField() {
 		if fInfo.stored {
 			fc.computedStoredFields = append(fc.computedStoredFields, fInfo)
 		} else {
@@ -207,11 +214,11 @@ type Field struct {
 	invisibleFunc    func(Environment) (bool, Conditioner)
 	unique           bool
 	index            bool
-	compute          string
+	Compute          string
 	depends          []string
 	RelatedModelName string
 	RelatedModel     *Model
-	reverseFK        string
+	ReverseFK        string
 	jsonReverseFK    string
 	m2mRelModel      *Model
 	m2mOurField      *Field
@@ -227,26 +234,26 @@ type Field struct {
 	relatedPath      FieldName
 	dependencies     []computeData
 	embed            bool
-	noCopy           bool
+	NoCopy           bool
 	defaultFunc      func(Environment) interface{}
 	onDelete         OnDeleteAction
-	onChange         string
-	onChangeWarning  string
-	onChangeFilters  string
+	OnChange         string
+	OnChangeWarning  string
+	OnChangeFilters  string
 	constraint       string
-	inverse          string
+	Inverse          string
 	filter           *Condition
 	contexts         FieldContexts
 	ctxType          ctxType
 	updates          []map[string]interface{}
 }
 
-// isComputedField returns true if this field is computed
-func (f *Field) isComputedField() bool {
-	return f.compute != ""
+// IsComputedField returns true if this field is computed
+func (f *Field) IsComputedField() bool {
+	return f.Compute != ""
 }
 
-// isComputedField returns true if this field is related
+// IsComputedField returns true if this field is related
 func (f *Field) isRelatedField() bool {
 	return f.relatedPath != nil
 }
@@ -264,7 +271,7 @@ func (f *Field) isStored() bool {
 		// reverse fields are not stored
 		return false
 	}
-	if (f.isComputedField() || f.isRelatedField()) && !f.stored {
+	if (f.IsComputedField() || f.isRelatedField()) && !f.stored {
 		// Computed and related non stored fields are not stored
 		return false
 	}
@@ -273,7 +280,7 @@ func (f *Field) isStored() bool {
 
 // isSettable returns true if the given field can be set directly
 func (f *Field) isSettable() bool {
-	if f.isComputedField() && f.inverse == "" {
+	if f.IsComputedField() && f.Inverse == "" {
 		return false
 	}
 	return true
@@ -289,7 +296,7 @@ func (f *Field) isReadOnly() bool {
 	//if fInfo.isRelatedField() {
 	//	fInfo = f.model.getRelatedFieldInfo(fInfo.relatedPath)
 	//}
-	if fInfo.compute != "" && fInfo.inverse == "" {
+	if fInfo.Compute != "" && fInfo.Inverse == "" {
 		return true
 	}
 	return false
@@ -318,7 +325,7 @@ var _ FieldName = new(Field)
 // checkFieldInfo makes sanity checks on the given Field.
 // It panics in case of severe error and logs recoverable errors.
 func checkFieldInfo(fi *Field) {
-	if fi.FieldType.IsReverseRelationType() && fi.reverseFK == "" {
+	if fi.FieldType.IsReverseRelationType() && fi.ReverseFK == "" {
 		log.Panic("'one2many' and 'rev2one' fields must define a 'ReverseFK' parameter", "model",
 			fi.model.TableName(), "field", fi.name, "type", fi.FieldType)
 	}
@@ -334,7 +341,7 @@ func checkFieldInfo(fi *Field) {
 			"type", fi.FieldType)
 	}
 
-	if fi.stored && !fi.isComputedField() {
+	if fi.stored && !fi.IsComputedField() {
 		log.Warn("'stored' should be set only on computed fields", "model", fi.model.TableName(), "field", fi.name,
 			"type", fi.FieldType)
 		fi.stored = false

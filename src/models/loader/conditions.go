@@ -41,7 +41,7 @@ type predicate struct {
 
 // Field returns the field name of this predicate
 func (p predicate) Field() FieldName {
-	return joinFieldNames(p.exprs, ExprSep)
+	return JoinFieldNames(p.exprs, ExprSep)
 }
 
 // Operator returns the operator of this predicate
@@ -59,7 +59,7 @@ func (p *predicate) AlterField(f FieldName) *predicate {
 	if f == nil || f.Name() == "" {
 		log.Panic("AlterField must be called with a field name", "field", f)
 	}
-	p.exprs = splitFieldNames(f, ExprSep)
+	p.exprs = SplitFieldNames(f, ExprSep)
 	return p
 }
 
@@ -177,7 +177,7 @@ func (c Condition) PredicatesWithField(f *Field) []*predicate {
 	var res []*predicate
 	for i, pred := range c.predicates {
 		if len(pred.exprs) > 0 {
-			if joinFieldNames(pred.exprs, ExprSep).JSON() == f.json {
+			if JoinFieldNames(pred.exprs, ExprSep).JSON() == f.json {
 				res = append(res, &c.predicates[i])
 			}
 		}
@@ -204,7 +204,7 @@ func (c Condition) String() string {
 			res += fmt.Sprintf("(\n%s\n)\n", p.cond.String())
 			continue
 		}
-		res += fmt.Sprintf("%s %s %v\n", joinFieldNames(p.exprs, ExprSep).Name(), p.operator, p.arg)
+		res += fmt.Sprintf("%s %s %v\n", JoinFieldNames(p.exprs, ExprSep).Name(), p.operator, p.arg)
 	}
 	return res
 }
@@ -227,7 +227,7 @@ type ConditionStart struct {
 
 // Field adds a field path (dot separated) to this condition
 func (cs ConditionStart) Field(name FieldName) *ConditionField {
-	newExprs := splitFieldNames(name, ExprSep)
+	newExprs := SplitFieldNames(name, ExprSep)
 	cp := ConditionField{cs: cs}
 	cp.exprs = append(cp.exprs, newExprs...)
 	return &cp
@@ -255,12 +255,12 @@ type ConditionField struct {
 
 // JSON returns the json field name of this ConditionField
 func (c ConditionField) JSON() string {
-	return joinFieldNames(c.exprs, ExprSep).JSON()
+	return JoinFieldNames(c.exprs, ExprSep).JSON()
 }
 
 // Name method for ConditionField
 func (c ConditionField) Name() string {
-	return joinFieldNames(c.exprs, ExprSep).Name()
+	return JoinFieldNames(c.exprs, ExprSep).Name()
 }
 
 var _ FieldName = ConditionField{}
@@ -432,7 +432,7 @@ func (c Condition) getAllExpressions(mi *Model) [][]FieldName {
 func (c *Condition) substituteExprs(mi *Model, substs map[FieldName][]FieldName) {
 	for i, p := range c.predicates {
 		for k, v := range substs {
-			if len(p.exprs) > 0 && joinFieldNames(p.exprs, ExprSep) == k {
+			if len(p.exprs) > 0 && JoinFieldNames(p.exprs, ExprSep) == k {
 				c.predicates[i].exprs = v
 			}
 		}
@@ -452,7 +452,7 @@ func (c *Condition) substituteChildOfOperator(rc *RecordCollection) {
 		if p.operator != operator.ChildOf {
 			continue
 		}
-		recModel := rc.model.getRelatedModelInfo(joinFieldNames(p.exprs, ExprSep))
+		recModel := rc.model.getRelatedModelInfo(JoinFieldNames(p.exprs, ExprSep))
 		if !recModel.hasParentField() {
 			// If we have no parent field, then we fetch only the "parent" record
 			c.predicates[i].operator = operator.Equals

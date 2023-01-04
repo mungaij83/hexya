@@ -62,7 +62,7 @@ func (m *Model) getRelatedModelInfo(path FieldName, skipLast ...bool) *Model {
 		skip = skipLast[0]
 	}
 
-	exprs := splitFieldNames(path, ExprSep)
+	exprs := SplitFieldNames(path, ExprSep)
 	fi := m.fields.MustGet(exprs[0].JSON())
 	if fi.RelatedModel == nil || (len(exprs) == 1 && skip) {
 		// The field is a non relational field, so we are already
@@ -70,7 +70,7 @@ func (m *Model) getRelatedModelInfo(path FieldName, skipLast ...bool) *Model {
 		return m
 	}
 	if len(exprs) > 1 {
-		return fi.RelatedModel.getRelatedModelInfo(joinFieldNames(exprs[1:], ExprSep), skipLast...)
+		return fi.RelatedModel.getRelatedModelInfo(JoinFieldNames(exprs[1:], ExprSep), skipLast...)
 	}
 	return fi.RelatedModel
 }
@@ -78,7 +78,7 @@ func (m *Model) getRelatedModelInfo(path FieldName, skipLast ...bool) *Model {
 // getRelatedFieldIfo returns the Field of the related field when
 // following path. Path can be formed from field names or JSON names.
 func (m *Model) GetRelatedFieldInfo(path FieldName) *Field {
-	colExprs := splitFieldNames(path, ExprSep)
+	colExprs := SplitFieldNames(path, ExprSep)
 	var rmi *Model
 	num := len(colExprs)
 	if len(colExprs) > 1 {
@@ -294,7 +294,7 @@ func (m *Model) FieldName(name string) FieldName {
 
 // Field starts a condition on this model
 func (m *Model) Field(name FieldName) *ConditionField {
-	newExprs := splitFieldNames(name, ExprSep)
+	newExprs := SplitFieldNames(name, ExprSep)
 	cp := ConditionField{}
 	cp.exprs = append(cp.exprs, newExprs...)
 	return &cp
@@ -338,7 +338,7 @@ func (m *Model) FieldsGet(fields ...FieldName) map[string]*FieldInfo {
 			Selection:     fInfo.selection,
 			Domain:        filter,
 			ReverseFK:     fInfo.jsonReverseFK,
-			OnChange:      fInfo.onChange != "",
+			OnChange:      fInfo.OnChange != "",
 			Translate:     translate,
 			InvisibleFunc: fInfo.invisibleFunc,
 			ReadOnly:      fInfo.isReadOnly(),
@@ -444,7 +444,7 @@ func CreateModel(name string, options tools.Option) *Model {
 		json:      "id",
 		model:     mi,
 		required:  true,
-		noCopy:    true,
+		NoCopy:    true,
 		FieldType: fieldtype.Integer,
 		structField: reflect.TypeOf(
 			struct {

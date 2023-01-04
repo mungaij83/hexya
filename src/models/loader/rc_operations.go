@@ -36,7 +36,7 @@ func (rc *RecordCollection) Union(other RecordSet) *RecordCollection {
 		delete(idMap, id)
 		i++
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).withIds(ids)
+	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
 }
 
 // Subtract returns a RecordSet with the Records that are in this
@@ -67,7 +67,7 @@ func (rc *RecordCollection) Subtract(other RecordSet) *RecordCollection {
 		ids[i] = id
 		i++
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).withIds(ids)
+	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
 }
 
 // Intersect returns a new RecordCollection with only the records that are both
@@ -99,7 +99,7 @@ func (rc *RecordCollection) Intersect(other RecordSet) *RecordCollection {
 		ids[i] = id
 		i++
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).withIds(ids)
+	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
 }
 
 // CartesianProduct returns the cartesian product of this RecordCollection with others.
@@ -154,7 +154,7 @@ func (rc *RecordCollection) Sorted(less func(rs1 RecordSet, rs2 RecordSet) bool)
 	for _, rec := range records {
 		ids = append(ids, rec.ids[0])
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).withIds(ids)
+	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
 }
 
 // SortedDefault returns a new record set with the same records as rc but sorted according

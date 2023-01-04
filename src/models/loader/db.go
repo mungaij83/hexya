@@ -78,8 +78,8 @@ type DbAdapter interface {
 	// fieldIsNull returns true if the given Field results in a
 	// NOT NULL column in database.
 	fieldIsNotNull(fi *Field) bool
-	// quoteTableName returns the given table name with sql quotes
-	quoteTableName(string) string
+	// QuoteTableName returns the given table name with sql quotes
+	QuoteTableName(string) string
 	// indexExists returns true if an index with the given name exists in the given table
 	indexExists(table string, name string) bool
 	// constraintExists returns true if a constraint with the given name exists
@@ -198,9 +198,9 @@ func (db *DatabaseConnector) MustExec(query string, args ...interface{}) int64 {
 	log.Debug("Must Exec: ", "query", query, "args", args)
 	var err error
 	if len(args) > 0 {
-		err = db.DB().Exec(query, args...).Count(&count).Error
+		err = db.DB().Raw(query, args...).Count(&count).Error
 	} else {
-		err = db.DB().Exec(query).Count(&count).Error
+		err = db.DB().Raw(query).Count(&count).Error
 	}
 	if err != nil {
 		log.Warn("Failed to execute query:", "error", err.Error())

@@ -195,7 +195,7 @@ func (d *postgresAdapter) tables() map[string]bool {
 }
 
 // quoteTableName returns the given table name with sql quotes
-func (d *postgresAdapter) quoteTableName(tableName string) string {
+func (d *postgresAdapter) QuoteTableName(tableName string) string {
 	return fmt.Sprintf(`"%s"`, tableName)
 }
 
@@ -305,7 +305,7 @@ UNION ALL
 	ON      "m2".parent_id = "recursive_query_children_ids".id
 )
 SELECT  id
-FROM    recursive_query_children_ids`, d.quoteTableName(table), d.quoteTableName(table))
+FROM    recursive_query_children_ids`, d.QuoteTableName(table), d.QuoteTableName(table))
 	return res
 }
 

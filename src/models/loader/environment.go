@@ -53,6 +53,10 @@ func (env Environment) Cr() *gorm.DB {
 	return env.cr.tx
 }
 
+func (env Environment) Cursor() *Cursor {
+	return env.cr
+}
+
 // Uid returns the user id of the Environment
 func (env Environment) Uid() int64 {
 	return env.uid

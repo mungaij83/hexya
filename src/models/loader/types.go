@@ -447,7 +447,7 @@ func NewModelDataFromRS(rs RecordSet, fm ...FieldMap) *ModelData {
 		for k, v := range f {
 			fi := rs.Collection().Model().GetRelatedFieldInfo(rs.Collection().Model().FieldName(k))
 			if fi.isRelationField() {
-				v = rs.Collection().convertToRecordSet(v, fi.RelatedModelName)
+				v = rs.Collection().ConvertToRecordSet(v, fi.RelatedModelName)
 			}
 			v = fixFieldValue(v, fi)
 			fMap[fi.json] = v

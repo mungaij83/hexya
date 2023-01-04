@@ -39,7 +39,7 @@ func (rc *RecordCollection) substituteRelatedFields(fields []FieldName) ([]Field
 	return resFields, resSubsts
 }
 
-// addIntermediatePaths adds the paths that compose fields and returns a new slice.
+// addIntermediatePaths adds the paths that compose fields and returns a New slice.
 //
 // e.g. given [User.Address.Country Note Partner.Age] will return
 // [User User.Address User.address.country Note Partner Partner.Age]
@@ -51,14 +51,14 @@ func (rc *RecordCollection) addIntermediatePaths(fields []FieldName) []FieldName
 	// Add intermediate records to our map
 	for _, field := range fields {
 		keys[field] = true
-		exprs := splitFieldNames(field, ExprSep)
+		exprs := SplitFieldNames(field, ExprSep)
 		if len(exprs) == 1 {
 			continue
 		}
 		var curPath FieldName
 		for _, expr := range exprs {
 			if curPath != nil {
-				curPath = joinFieldNames(append([]FieldName{curPath}, expr), ExprSep)
+				curPath = JoinFieldNames(append([]FieldName{curPath}, expr), ExprSep)
 			} else {
 				curPath = expr
 			}
@@ -89,7 +89,7 @@ func (rc *RecordCollection) substituteRelatedFieldsInMap(fMap FieldMap) FieldMap
 	return res
 }
 
-// substituteRelatedInQuery returns a new RecordCollection with related fields
+// substituteRelatedInQuery returns a New RecordCollection with related fields
 // substituted in the query.
 func (rc *RecordCollection) substituteRelatedInQuery() *RecordCollection {
 	// Substitute in RecordCollection query
@@ -103,18 +103,18 @@ func (rc *RecordCollection) substituteRelatedInQuery() *RecordCollection {
 		var resExprs []FieldName
 		for _, expr := range exprs {
 			resExprs = append(resExprs, expr)
-			curPath = joinFieldNames(resExprs, ExprSep)
+			curPath = JoinFieldNames(resExprs, ExprSep)
 			fi := rc.model.GetRelatedFieldInfo(curPath)
 			curFI := fi
 			for curFI.isRelatedField() {
 				// We loop because target field may be related itself
 				reLen := len(resExprs)
 				jsonPath := curFI.relatedPath
-				resExprs = append(resExprs[:reLen-1], splitFieldNames(jsonPath, ExprSep)...)
-				curFI = rc.model.GetRelatedFieldInfo(joinFieldNames(resExprs, ExprSep))
+				resExprs = append(resExprs[:reLen-1], SplitFieldNames(jsonPath, ExprSep)...)
+				curFI = rc.model.GetRelatedFieldInfo(JoinFieldNames(resExprs, ExprSep))
 			}
 		}
-		substs[joinFieldNames(exprs, ExprSep)] = resExprs
+		substs[JoinFieldNames(exprs, ExprSep)] = resExprs
 	}
 	rc.query.substituteConditionExprs(substs)
 
@@ -124,22 +124,22 @@ func (rc *RecordCollection) substituteRelatedInQuery() *RecordCollection {
 // substituteRelatedInPath recursively substitutes path for its related value.
 // If path is not a related field, it is returned as is.
 func (rc *RecordCollection) substituteRelatedInPath(path FieldName) FieldName {
-	exprs := splitFieldNames(path, ExprSep)
+	exprs := SplitFieldNames(path, ExprSep)
 	prefix := exprs[0]
 	fi := rc.model.GetRelatedFieldInfo(prefix)
 	if fi.isRelatedField() {
 		newPath := fi.relatedPath
 		if len(exprs) > 1 {
-			newPath = joinFieldNames(append([]FieldName{newPath}, exprs[1:]...), ExprSep)
+			newPath = JoinFieldNames(append([]FieldName{newPath}, exprs[1:]...), ExprSep)
 		}
 		return rc.substituteRelatedInPath(newPath)
 	}
 	if len(exprs) == 1 {
 		return prefix
 	}
-	suffix := joinFieldNames(exprs[1:], ExprSep)
+	suffix := JoinFieldNames(exprs[1:], ExprSep)
 	model := rc.Model().getRelatedModelInfo(prefix)
-	res := joinFieldNames(append([]FieldName{prefix}, rc.Env().Pool(model.name).substituteRelatedInPath(suffix)), ExprSep)
+	res := JoinFieldNames(append([]FieldName{prefix}, rc.Env().Pool(model.name).substituteRelatedInPath(suffix)), ExprSep)
 	return res
 }
 
@@ -149,7 +149,7 @@ func (rc *RecordCollection) createRelatedRecord(path FieldName, vals RecordData)
 	log.Debug("Creating related record", "recordset", rc, "path", path, "vals", vals)
 	rc.EnsureOne()
 	fi := rc.model.GetRelatedFieldInfo(path)
-	exprs := splitFieldNames(path, ExprSep)
+	exprs := SplitFieldNames(path, ExprSep)
 	switch fi.FieldType {
 	case fieldtype.Many2One, fieldtype.One2One, fieldtype.Many2Many:
 		resRS := rc.createRelatedFKRecord(fi, vals)
@@ -158,13 +158,13 @@ func (rc *RecordCollection) createRelatedRecord(path FieldName, vals RecordData)
 	case fieldtype.One2Many, fieldtype.Rev2One:
 		target := rc
 		if len(exprs) > 1 {
-			target = rc.Get(joinFieldNames(exprs[:len(exprs)-1], ExprSep)).(RecordSet).Collection()
+			target = rc.Get(JoinFieldNames(exprs[:len(exprs)-1], ExprSep)).(RecordSet).Collection()
 			if target.IsEmpty() {
-				log.Panic("Target record does not exist", "recordset", rc, "path", joinFieldNames(exprs[:len(exprs)-1], ExprSep))
+				log.Panic("Target record does not exist", "recordset", rc, "path", JoinFieldNames(exprs[:len(exprs)-1], ExprSep))
 			}
 			target = target.Records()[0]
 		}
-		vals.Underlying().Set(fi.RelatedModel.FieldName(fi.reverseFK), target)
+		vals.Underlying().Set(fi.RelatedModel.FieldName(fi.ReverseFK), target)
 		return rc.env.Pool(fi.RelatedModel.name).Call("Create", vals).(RecordSet).Collection()
 	}
 	return rc.env.Pool(rc.ModelName())

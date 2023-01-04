@@ -2,9 +2,11 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"github.com/hexya-erp/hexya/src/tools"
 	"gorm.io/gorm"
+	"reflect"
 )
 
 // RecordOptions extra options to be used with GORM models
@@ -46,8 +48,37 @@ type Repository[T any, K PrimaryKeys] interface {
 	hasParentField() bool
 }
 
+// BaseRepository abstract type for repository functions
+type BaseRepository[T any] struct {
+	extensions       map[string]ModelExtension[T]
+	extensionMethods map[string]map[string]*loader.Method
+}
+
+func (mr BaseRepository[T]) initialize() {
+	mr.extensions = make(map[string]ModelExtension[T])
+	mr.extensionMethods = make(map[string]map[string]*loader.Method)
+}
+
+func (mr BaseRepository[T]) RegisterExtension(ext ModelExtension[T]) error {
+	_, ok := mr.extensions[ext.ExtensionName()]
+	if ok {
+		return errors.New(fmt.Sprintf("extension with name already registered: %v", ext.ExtensionName()))
+	}
+	mr.extensions[ext.ExtensionName()] = ext
+	// Load methods from extension
+	extMap := make(map[string]*loader.Method)
+	structType := reflect.TypeOf(ext)
+	for i := 0; i < structType.NumMethod(); i++ {
+		mthd := structType.Method(i)
+		extMap[mthd.Name] = nil
+	}
+	mr.extensionMethods[ext.ExtensionName()] = extMap
+	return nil
+}
+
 // ModelRepository default implementation of model repository
 type ModelRepository[T any, K PrimaryKeys] struct {
+	BaseRepository[T]
 	env       *loader.Environment
 	db        *gorm.DB
 	tableName string
@@ -60,8 +91,8 @@ func (mr ModelRepository[T, K]) connection() *gorm.DB {
 	}
 	return mr.env.Cr()
 }
-func (mr ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) error {
-	mdl, err := loader.LoadBaseModel(new(T))
+func (mr ModelRepository[T, K]) validateAndInitialize(modelLoader *ModelLoader) error {
+	mdl, err := modelLoader.LoadBaseModel(new(T))
 	if err != nil {
 		return err
 	}
@@ -73,6 +104,7 @@ func (mr ModelRepository[T, K]) validateAndInitialize(loader *ModelLoader) error
 	mr.model = mdl
 	// Resolve model table name
 	mr.tableName = mr.connection().Unscoped().Model(new(T)).Name()
+	mr.initialize()
 	return nil
 }
 func (mr ModelRepository[T, K]) GetModel() (*loader.Model, bool) {

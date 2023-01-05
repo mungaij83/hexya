@@ -21,9 +21,17 @@ func getOrCreateModel(name string, options tools.Option) *loader.Model {
 	return model
 }
 
+func GetRepository[T any]() Repository[any, int64] {
+	return Registry.getRepo(new(T))
+}
+
 // NewModel creates a new model with the given name.
 func NewModel(name string) *loader.Model {
 	model := getOrCreateModel(name, 0)
+	if model == nil {
+		log.Warn("failed to register model", "Error", "Failed to create")
+		return nil
+	}
 	//model.InheritModel(Registry.MustGet("ModelMixin"))
 	return model
 }

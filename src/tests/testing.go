@@ -142,7 +142,7 @@ func TearDownTests(moduleName string) {
 	}
 	fmt.Printf("Tearing down database for module %s...", moduleName)
 	dbName := fmt.Sprintf("%s_%s_tests", prefix, moduleName)
-	adapter.Connector().MustExec(fmt.Sprintf("DROP DATABASE %s", dbName))
+	adapter.DropDatabase(dbName)
 	fmt.Println("Ok")
 	// Close connection
 	adapter.Connector().DBClose()

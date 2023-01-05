@@ -91,6 +91,7 @@ func tearDownTests() {
 		return
 	}
 	fmt.Printf("Tearing down database for models\n")
-	TestAdapter.Connector().MustExec(fmt.Sprintf("DROP DATABASE %s", dbArgs.DB))
+	TestAdapter.DropDatabase(dbArgs.DB)
+	fmt.Printf("Close database for models\n")
 	TestAdapter.Close()
 }

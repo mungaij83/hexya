@@ -334,5 +334,23 @@ func (d *postgresAdapter) Close() (ok bool) {
 			ok = false
 		}
 	}()
+	d.connector.DBClose()
+	return
+}
+
+func (d *postgresAdapter) DropDatabase(name string) (ok bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			ok = false
+		}
+	}()
+	d.connector.DBClose()
+	err := d.connector.DBConnect(d.connectionString(d.connector.connParams, false))
+	if err != nil {
+		ok = false
+		return
+	}
+	c := d.Connector().MustExec(fmt.Sprintf("DROP DATABASE %s", name))
+	ok = c > 0
 	return
 }

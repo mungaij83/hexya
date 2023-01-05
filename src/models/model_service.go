@@ -25,7 +25,7 @@ type PrimaryKeys interface {
 
 // Repository Type of repository to represent any query link between
 type Repository[T any, K PrimaryKeys] interface {
-	Save(v T) error
+	Save(v interface{}) error
 	Search(cond loader.Condition) (interface{}, error)
 	TableName() string
 	Delete(v interface{}) (interface{}, error)
@@ -79,12 +79,16 @@ func (mr BaseRepository[T]) RegisterExtension(ext interface{}) error {
 	}
 	mr.extensions[extensionName] = ext
 	// Load methods from extension
+	var err error
 	extMap := make(map[string]*loader.Method)
 	structType := reflect.TypeOf(reflect.ValueOf(ext).Interface())
 	for i := 0; i < structType.NumMethod(); i++ {
 		mthd := structType.Method(i)
 		log.Debug("Defined methods: ", "methodName", mthd.Name)
-		extMap[mthd.Name] = nil
+		extMap[mthd.Name], err = loader.NewReflectedMethod(mthd, "extension")
+		if err != nil {
+			log.Warn("Error creating method type", "error", err)
+		}
 	}
 	mr.extensionMethods[extensionName] = extMap
 	return nil

@@ -15,6 +15,7 @@
 package testmodule
 
 import (
+	"github.com/hexya-erp/hexya/src/models"
 	"time"
 )
 
@@ -32,6 +33,7 @@ const (
 const isPremiumString = isPremiumDescription
 
 type UserModel struct {
+	models.HexyaBaseModel
 	Name          string       `hexya:"String=Name;Help=The user's username;unique;NoCopy"`
 	DecoratedName string       `hexya:"display_name=Decorated Name"`
 	Email         string       `hexya:"help=The user's email address;size=100;index=true"`
@@ -64,6 +66,7 @@ type ProfileModel struct {
 }
 
 type PostModel struct {
+	models.HexyaBaseModel
 	User             *UserModel     `hexya:"many2one=Id"`
 	Title            string         `hexya:"required"`
 	Content          string         `hexya:"type=html"`
@@ -76,12 +79,14 @@ type PostModel struct {
 	WriterMoney      float64
 }
 type CommentModel struct {
+	models.HexyaBaseModel
 	Post        PostModel `hexya:"many2one=ID"`
 	WriterMoney float64   `hexya:"related=PostWriter.PMoney"`
 	Text        string
 }
 
 type TagModel struct {
+	models.HexyaBaseModel
 	Name        string
 	BestPost    PostModel   `hexya:"many2one=id"`
 	Posts       []PostModel `hexya:"many2many=id"`

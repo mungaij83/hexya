@@ -81,6 +81,14 @@ func (mc *modelCollection) MustGetSequence(nameOrJSON string) *Sequence {
 	}
 	return s
 }
+func (mc *modelCollection) getRepo(t interface{}) Repository[any, int64] {
+	name := mc.loader.detectTableName(t)
+	rep, ok := mc.registryByTableName[name]
+	if !ok {
+		return nil
+	}
+	return rep
+}
 
 // add the given Model to the modelCollection
 func (mc *modelCollection) add(mi Repository[any, int64]) error {
@@ -117,4 +125,9 @@ func newModelCollection() *modelCollection {
 		registryByTableName: make(map[string]Repository[any, int64]),
 		sequences:           make(map[string]*Sequence),
 	}
+}
+
+func RegisterModel(repo Repository[any, int64]) Repository[any, int64] {
+	Registry.add(repo)
+	return repo
 }

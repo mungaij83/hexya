@@ -141,12 +141,25 @@ type callerGroup struct {
 type Method struct {
 	sync.RWMutex
 	name          string
+	category      string
 	model         *Model
 	methodType    reflect.Type
 	topLayer      *methodLayer
 	nextLayer     map[*methodLayer]*methodLayer
 	Groups        map[*security.Group]bool
 	GroupsCallers map[callerGroup]bool
+}
+
+func NewReflectedMethod(mth reflect.Method, methodType string) (*Method, error) {
+	mtd := &Method{
+		name:          mth.Name,
+		methodType:    mth.Type,
+		category:      methodType,
+		nextLayer:     make(map[*methodLayer]*methodLayer),
+		Groups:        make(map[*security.Group]bool),
+		GroupsCallers: make(map[callerGroup]bool),
+	}
+	return mtd, nil
 }
 
 // MethodType returns the methodType of a Method

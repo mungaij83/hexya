@@ -34,6 +34,7 @@ func TestModelDeclaration(t *testing.T) {
 		// Limitations above:https://go101.org/generics/888-the-status-quo-of-go-custom-generics.html
 		// Make it difficult to use the BaseModel, methods in base are not detected as implemented by the other models
 		// Also some methods are implemented with interface type as argument or return typ for the reason above, maybe a work around is available.
+
 		pp := ProfileRepository[ProfileModel, int64]{}
 		// Save before should result in an error
 		err := pp.Save(&tt)
@@ -49,5 +50,6 @@ func TestModelDeclaration(t *testing.T) {
 
 		err = pp.registerExtension(&DefaultMixinExtension[ProfileModel]{})
 		So(err, ShouldBeNil)
+
 	})
 }

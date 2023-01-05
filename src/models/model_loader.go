@@ -106,6 +106,9 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 		mdl = NewModel(tableName)
 		break
 	}
+	if mdl == nil {
+		return nil, errors.New("model failed to initialize")
+	}
 	// Add Fields and sorting order
 	mdl.AddFields(fieldDefinitions)
 	switch v := data.(type) {

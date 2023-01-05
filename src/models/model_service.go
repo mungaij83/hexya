@@ -46,33 +46,47 @@ type Repository[T any, K PrimaryKeys] interface {
 	IsM2MLink() bool
 	IsTransient() bool
 	hasParentField() bool
+	registerExtension(d any) error
 }
 
 // BaseRepository abstract type for repository functions
 type BaseRepository[T any] struct {
-	extensions       map[string]ModelExtension[T]
+	extensions       map[string]interface{}
 	extensionMethods map[string]map[string]*loader.Method
 }
 
 func (mr BaseRepository[T]) initialize() {
-	mr.extensions = make(map[string]ModelExtension[T])
+	mr.extensions = make(map[string]interface{})
 	mr.extensionMethods = make(map[string]map[string]*loader.Method)
 }
 
-func (mr BaseRepository[T]) RegisterExtension(ext ModelExtension[T]) error {
-	_, ok := mr.extensions[ext.ExtensionName()]
-	if ok {
-		return errors.New(fmt.Sprintf("extension with name already registered: %v", ext.ExtensionName()))
+func (mr BaseRepository[T]) RegisterExtension(ext interface{}) error {
+	if mr.extensions == nil {
+		mr.extensions = make(map[string]interface{})
 	}
-	mr.extensions[ext.ExtensionName()] = ext
+	extensionName := ""
+	e, ok := ext.(ModelExtension[T])
+	if !ok {
+		return errors.New("invalid extension signature, require method: ExtensionName")
+	}
+	extensionName = e.ExtensionName()
+	_, ok = mr.extensions[extensionName]
+	if ok {
+		return errors.New(fmt.Sprintf("extension with name already registered: %v", extensionName))
+	}
+	if mr.extensionMethods == nil {
+		mr.extensionMethods = make(map[string]map[string]*loader.Method)
+	}
+	mr.extensions[extensionName] = ext
 	// Load methods from extension
 	extMap := make(map[string]*loader.Method)
-	structType := reflect.TypeOf(ext)
+	structType := reflect.TypeOf(reflect.ValueOf(ext).Interface())
 	for i := 0; i < structType.NumMethod(); i++ {
 		mthd := structType.Method(i)
+		log.Debug("Defined methods: ", "methodName", mthd.Name)
 		extMap[mthd.Name] = nil
 	}
-	mr.extensionMethods[ext.ExtensionName()] = extMap
+	mr.extensionMethods[extensionName] = extMap
 	return nil
 }
 
@@ -266,4 +280,8 @@ func (mr ModelRepository[T, K]) IsTransient() bool {
 func (mr ModelRepository[T, K]) hasParentField() bool {
 	_, parentExists := mr.Fields().Get("Parent")
 	return parentExists
+}
+
+func (mr ModelRepository[T, K]) registerExtension(d interface{}) error {
+	return mr.RegisterExtension(d)
 }

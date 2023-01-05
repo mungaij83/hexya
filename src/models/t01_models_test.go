@@ -47,5 +47,7 @@ func TestModelDeclaration(t *testing.T) {
 		log.Debug("Failed to add profile", "error", err)
 		So(err, ShouldBeNil)
 
+		err = pp.registerExtension(&DefaultMixinExtension[ProfileModel]{})
+		So(err, ShouldBeNil)
 	})
 }

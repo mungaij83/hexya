@@ -26,18 +26,18 @@ func (DefaultMixinExtension[T]) ExtensionName() string {
 	return "default_mixin"
 }
 
-func (DefaultMixinExtension[T]) commonMixinNew(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) New(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
 	return rc.New(data)
 }
 
 // Create inserts a record in the database from the given data.
 // Returns the created RecordCollection.
-func (DefaultMixinExtension[T]) commonMixinCreate(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Create(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
 	return rc.Create(data)
 }
 
 // Read reads the database and returns a slice of FieldMap of the given model.
-func (DefaultMixinExtension[T]) commonMixinRead(rc *loader.RecordCollection, fields loader.FieldNames) []loader.RecordData {
+func (DefaultMixinExtension[T]) Read(rc *loader.RecordCollection, fields loader.FieldNames) []loader.RecordData {
 	var res []loader.RecordData
 	// Check if we have id in fields, and add it otherwise
 	fields = loader.AddIDIfNotPresent(fields)
@@ -58,37 +58,37 @@ func (DefaultMixinExtension[T]) commonMixinRead(rc *loader.RecordCollection, fie
 // i.e. "User.Profile.Age" or "user_id.profile_id.age".
 // If no fields are given, all DB columns of the RecordCollection's
 // model are retrieved.
-func (DefaultMixinExtension[T]) commonMixinLoad(rc *loader.RecordCollection, fields ...loader.FieldName) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Load(rc *loader.RecordCollection, fields ...loader.FieldName) *loader.RecordCollection {
 	return rc.Load(fields...)
 }
 
 // Write is the base implementation of the 'Write' method which updates
 // records in the database with the given data.
 // Data can be either a struct pointer or a FieldMap.`,
-func (DefaultMixinExtension[T]) commonMixinWrite(rc *loader.RecordCollection, data loader.RecordData) bool {
+func (DefaultMixinExtension[T]) Write(rc *loader.RecordCollection, data loader.RecordData) bool {
 	return rc.Update(data)
 }
 
 // Unlink deletes the given records in the database.
-func (DefaultMixinExtension[T]) commonMixinUnlink(rc *loader.RecordCollection) int64 {
+func (DefaultMixinExtension[T]) Unlink(rc *loader.RecordCollection) int64 {
 	return rc.Unlink()
 }
 
 // BrowseOne returns a new RecordSet with only the record with the given id.
 // Note that this function is just a shorcut for Search on a given id.
-func (DefaultMixinExtension[T]) commonMixinBrowseOne(rc *loader.RecordCollection, id int64) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) BrowseOne(rc *loader.RecordCollection, id int64) *loader.RecordCollection {
 	return rc.Call("Search", rc.Model().Field(loader.ID).Equals(id)).(loader.RecordSet).Collection()
 }
 
 // SearchCount fetch from the database the number of records that match the RecordSet conditions.
-func (DefaultMixinExtension[T]) commonMixinSearchCount(rc *loader.RecordCollection) int {
+func (DefaultMixinExtension[T]) SearchCount(rc *loader.RecordCollection) int {
 	return rc.SearchCount()
 }
 
 // CopyData copies given record's data with all its fields values.
 //
 // overrides contains field values to override in the original values of the copied record.
-func (DefaultMixinExtension[T]) commonMixinCopyData(rc *loader.RecordCollection, overrides loader.RecordData) *loader.ModelData {
+func (DefaultMixinExtension[T]) CopyData(rc *loader.RecordCollection, overrides loader.RecordData) *loader.ModelData {
 	rc.EnsureOne()
 	// Handle case when overrides is nil
 	oVal := reflect.ValueOf(overrides)
@@ -128,7 +128,7 @@ func (DefaultMixinExtension[T]) commonMixinCopyData(rc *loader.RecordCollection,
 // Copy duplicates the given records.
 //
 // overrides contains field values to override in the original values of the copied record.`,
-func (DefaultMixinExtension[T]) commonMixinCopy(rc *loader.RecordCollection, overrides loader.RecordData) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Copy(rc *loader.RecordCollection, overrides loader.RecordData) *loader.RecordCollection {
 	rc.EnsureOne()
 	data := rc.Call("CopyData", overrides).(loader.RecordData).Underlying()
 	newRs := rc.Call("Create", data).(loader.RecordSet).Collection()
@@ -136,7 +136,7 @@ func (DefaultMixinExtension[T]) commonMixinCopy(rc *loader.RecordCollection, ove
 }
 
 // NameGet retrieves the human readable name of this record.`,
-func (DefaultMixinExtension[T]) commonMixinNameGet(rc *loader.RecordCollection) string {
+func (DefaultMixinExtension[T]) NameGet(rc *loader.RecordCollection) string {
 	if _, nameExists := rc.Model().Fields().Get("Name"); nameExists {
 		switch name := rc.Get(rc.Model().FieldName("Name")).(type) {
 		case string:
@@ -157,7 +157,7 @@ func (DefaultMixinExtension[T]) commonMixinNameGet(rc *loader.RecordCollection) 
 // This is used for example to provide suggestions based on a partial
 // value for a relational field. Sometimes be seen as the inverse
 // function of NameGet but it is not guaranteed to be.
-func (DefaultMixinExtension[T]) commonMixinSearchByName(rc *loader.RecordCollection, name string, op operator.Operator, additionalCond loader.Conditioner, limit int) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) SearchByName(rc *loader.RecordCollection, name string, op operator.Operator, additionalCond loader.Conditioner, limit int) *loader.RecordCollection {
 	if op == "" {
 		op = operator.IContains
 	}
@@ -173,7 +173,7 @@ func (DefaultMixinExtension[T]) commonMixinSearchByName(rc *loader.RecordCollect
 // The string, help, and selection (if present) attributes are translated.
 //
 // The result map is indexed by the fields JSON names.
-func (DefaultMixinExtension[T]) commonMixinFieldsGet(rc *loader.RecordCollection, args loader.FieldsGetArgs) map[string]*loader.FieldInfo {
+func (DefaultMixinExtension[T]) FieldsGet(rc *loader.RecordCollection, args loader.FieldsGetArgs) map[string]*loader.FieldInfo {
 	// Get the field informations
 	res := rc.Model().FieldsGet(args.Fields...)
 
@@ -189,7 +189,7 @@ func (DefaultMixinExtension[T]) commonMixinFieldsGet(rc *loader.RecordCollection
 
 // FieldGet returns the definition of the given field.
 // The string, help, and selection (if present) attributes are translated.
-func (DefaultMixinExtension[T]) commonMixinFieldGet(rc *loader.RecordCollection, field loader.FieldName) *loader.FieldInfo {
+func (DefaultMixinExtension[T]) FieldGet(rc *loader.RecordCollection, field loader.FieldName) *loader.FieldInfo {
 	args := loader.FieldsGetArgs{
 		Fields: []loader.FieldName{field},
 	}
@@ -197,7 +197,7 @@ func (DefaultMixinExtension[T]) commonMixinFieldGet(rc *loader.RecordCollection,
 }
 
 // DefaultGet returns a Params map with the default values for the model.
-func (DefaultMixinExtension[T]) commonMixinDefaultGet(rc *loader.RecordCollection) *loader.ModelData {
+func (DefaultMixinExtension[T]) DefaultGet(rc *loader.RecordCollection) *loader.ModelData {
 	res := rc.GetDefaults(rc.Env().Context().GetBool("hexya_ignore_computed_defaults"))
 	return res
 }
@@ -207,7 +207,7 @@ func (DefaultMixinExtension[T]) commonMixinDefaultGet(rc *loader.RecordCollectio
 // until a top-level record is found.
 //
 // It returns true if no loop was found, false otherwise`,
-func (mx DefaultMixinExtension[T]) commonMixinCheckRecursion(rc *loader.RecordCollection) bool {
+func (mx DefaultMixinExtension[T]) CheckRecursion(rc *loader.RecordCollection) bool {
 	if _, exists := rc.Model().Fields().Get("Parent"); !exists {
 		// No Parent field in model, so no loop
 		return true
@@ -238,7 +238,7 @@ func (mx DefaultMixinExtension[T]) commonMixinCheckRecursion(rc *loader.RecordCo
 
 // Onchange returns the values that must be modified according to each field's Onchange
 // method in the pseudo-record given as params.Values`,
-func (DefaultMixinExtension[T]) commonMixinOnChange(rc *loader.RecordCollection, params loader.OnchangeParams) loader.OnchangeResult {
+func (DefaultMixinExtension[T]) OnChange(rc *loader.RecordCollection, params loader.OnchangeParams) loader.OnchangeResult {
 	var retValues *loader.ModelData
 	var warnings []string
 	filters := make(map[loader.FieldName]loader.Conditioner)
@@ -350,13 +350,13 @@ func (DefaultMixinExtension[T]) commonMixinOnChange(rc *loader.RecordCollection,
 
 // Search returns a new RecordSet filtering on the current one with the
 // additional given Condition.
-func (DefaultMixinExtension[T]) commonMixinSearch(rc *loader.RecordCollection, cond loader.Conditioner) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Search(rc *loader.RecordCollection, cond loader.Conditioner) *loader.RecordCollection {
 	return rc.Search(cond.Underlying())
 }
 
 // Browse returns a new RecordSet with only the records with the given ids.
 // Note that this function is just a shorcut for Search on a list of ids.
-func (DefaultMixinExtension[T]) commonMixinBrowse(rc *loader.RecordCollection, ids []int64) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Browse(rc *loader.RecordCollection, ids []int64) *loader.RecordCollection {
 	return rc.Call("Search", rc.Model().Field(loader.ID).In(ids)).(loader.RecordSet).Collection()
 }
 
@@ -364,28 +364,28 @@ func (DefaultMixinExtension[T]) commonMixinBrowse(rc *loader.RecordCollection, i
 // with the queries ids.
 //
 // Fetch is lazy and only return ids. Use Load() instead if you want to fetch all fields.
-func (DefaultMixinExtension[T]) commonMixinFetch(rc *loader.RecordCollection) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Fetch(rc *loader.RecordCollection) *loader.RecordCollection {
 	return rc.Fetch()
 }
 
 // SearchAll returns a RecordSet with all items of the table, regardless of the
 // current RecordSet query. It is mainly meant to be used on an empty RecordSet.
-func (DefaultMixinExtension[T]) commonMixinSearchAll(rc *loader.RecordCollection) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) SearchAll(rc *loader.RecordCollection) *loader.RecordCollection {
 	return rc.SearchAll()
 }
 
 // GroupBy returns a new RecordSet grouped with the given GROUP BY expressions.
-func (DefaultMixinExtension[T]) commonMixinGroupBy(rc *loader.RecordCollection, exprs ...loader.FieldName) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) GroupBy(rc *loader.RecordCollection, exprs ...loader.FieldName) *loader.RecordCollection {
 	return rc.GroupBy(exprs...)
 }
 
 // Limit returns a new RecordSet with only the first 'limit' records.
-func (DefaultMixinExtension[T]) commonMixinLimit(rc *loader.RecordCollection, limit int) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Limit(rc *loader.RecordCollection, limit int) *loader.RecordCollection {
 	return rc.Limit(limit)
 }
 
 // Offset returns a new RecordSet with only the records starting at offset
-func (DefaultMixinExtension[T]) commonMixinOffset(rc *loader.RecordCollection, offset int) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Offset(rc *loader.RecordCollection, offset int) *loader.RecordCollection {
 	return rc.Offset(offset)
 }
 
@@ -393,56 +393,56 @@ func (DefaultMixinExtension[T]) commonMixinOffset(rc *loader.RecordCollection, o
 // Each expression contains a field name and optionally one of "asc" or "desc", such as:
 //
 // rs.OrderBy("Company", "Name desc")
-func (DefaultMixinExtension[T]) commonMixinOrderBy(rc *loader.RecordCollection, exprs ...string) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) OrderBy(rc *loader.RecordCollection, exprs ...string) *loader.RecordCollection {
 	return rc.OrderBy(exprs...)
 }
 
 // Union returns a new RecordSet that is the union of this RecordSet and the given
 // "other" RecordSet. The result is guaranteed to be a set of unique records.
-func (DefaultMixinExtension[T]) commonMixinUnion(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Union(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
 	return rc.Union(other)
 }
 
 // Subtract returns a RecordSet with the Records that are in this
 // RecordCollection but not in the given 'other' one.
 // The result is guaranteed to be a set of unique records.
-func (DefaultMixinExtension[T]) commonMixinSubtract(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Subtract(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
 	return rc.Subtract(other)
 }
 
 // Intersect returns a new RecordCollection with only the records that are both
 // in this RecordCollection and in the other RecordSet.
-func (DefaultMixinExtension[T]) commonMixinIntersect(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Intersect(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
 	return rc.Intersect(other)
 }
 
 // CartesianProduct returns the cartesian product of this RecordCollection with others.
-func (DefaultMixinExtension[T]) commonMixinCartesianProduct(rc *loader.RecordCollection, other ...loader.RecordSet) []*loader.RecordCollection {
+func (DefaultMixinExtension[T]) CartesianProduct(rc *loader.RecordCollection, other ...loader.RecordSet) []*loader.RecordCollection {
 	return rc.CartesianProduct(other...)
 }
 
 // Equals returns true if this RecordSet is the same as other
 // i.e. they are of the same model and have the same ids
-func (DefaultMixinExtension[T]) commonMixinEquals(rc *loader.RecordCollection, other loader.RecordSet) bool {
+func (DefaultMixinExtension[T]) Equals(rc *loader.RecordCollection, other loader.RecordSet) bool {
 	return rc.Equals(other)
 }
 
 // Sorted returns a new RecordCollection sorted according to the given less function.
 //
 // The less function should return true if rs1 < rs2`,
-func (DefaultMixinExtension[T]) commonMixinSorted(rc *loader.RecordCollection, less func(rs1 loader.RecordSet, rs2 loader.RecordSet) bool) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Sorted(rc *loader.RecordCollection, less func(rs1 loader.RecordSet, rs2 loader.RecordSet) bool) *loader.RecordCollection {
 	return rc.Sorted(less)
 }
 
 // SortedDefault returns a new record set with the same records as rc but sorted according
 // to the default order of this model
-func (DefaultMixinExtension[T]) commonMixinSortedDefault(rc *loader.RecordCollection) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) SortedDefault(rc *loader.RecordCollection) *loader.RecordCollection {
 	return rc.SortedDefault()
 }
 
 // SortedByField returns a new record set with the same records as rc but sorted by the given field.
 // If reverse is true, the sort is done in reversed order
-func (DefaultMixinExtension[T]) commonMixinSortedByField(rc *loader.RecordCollection, namer loader.FieldName, reverse bool) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) SortedByField(rc *loader.RecordCollection, namer loader.FieldName, reverse bool) *loader.RecordCollection {
 	return rc.SortedByField(namer, reverse)
 }
 
@@ -452,12 +452,12 @@ func (DefaultMixinExtension[T]) commonMixinSortedByField(rc *loader.RecordCollec
 // Note that if this record set is not fully loaded, this function will call the database
 // to load the fields before doing the filtering. In this case, it might be more efficient
 // to search the database directly with the filter condition.
-func (DefaultMixinExtension[T]) commonMixinFiltered(rc *loader.RecordCollection, test func(rs loader.RecordSet) bool) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Filtered(rc *loader.RecordCollection, test func(rs loader.RecordSet) bool) *loader.RecordCollection {
 	return rc.Filtered(test)
 }
 
 // GetRecord returns the Recordset with the given externalID. It panics if the externalID does not exist.
-func (DefaultMixinExtension[T]) commonMixinGetRecord(rc *loader.RecordCollection, externalID string) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) GetRecord(rc *loader.RecordCollection, externalID string) *loader.RecordCollection {
 	return rc.GetRecord(externalID)
 }
 
@@ -465,35 +465,35 @@ func (DefaultMixinExtension[T]) commonMixinGetRecord(rc *loader.RecordCollection
 //
 // If dontPanic is false, this function will panic, otherwise it returns true
 // if the user has the execution permission and false otherwise.
-func (DefaultMixinExtension[T]) commonMixinCheckExecutionPermission(rc *loader.RecordCollection, method *loader.Method, dontPanic ...bool) bool {
+func (DefaultMixinExtension[T]) CheckExecutionPermission(rc *loader.RecordCollection, method *loader.Method, dontPanic ...bool) bool {
 	return rc.CheckExecutionPermission(method, dontPanic...)
 }
 
 // SQLFromCondition returns the WHERE clause sql and arguments corresponding to
 // the given condition.`,
-func (DefaultMixinExtension[T]) commonMixinSQLFromCondition(rc *loader.RecordCollection, c *loader.Condition) (string, loader.SQLParams) {
+func (DefaultMixinExtension[T]) SQLFromCondition(rc *loader.RecordCollection, c *loader.Condition) (string, loader.SQLParams) {
 	return rc.SQLFromCondition(c)
 }
 
 // WithEnv returns a copy of the current RecordSet with the given Environment.
-func (DefaultMixinExtension[T]) commonMixinWithEnv(rc *loader.RecordCollection, env loader.Environment) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) WithEnv(rc *loader.RecordCollection, env loader.Environment) *loader.RecordCollection {
 	return rc.WithEnv(env)
 }
 
 // WithContext returns a copy of the current RecordSet with
 // its context extended by the given key and value.
-func (DefaultMixinExtension[T]) commonMixinWithContext(rc *loader.RecordCollection, key string, value interface{}) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) WithContext(rc *loader.RecordCollection, key string, value interface{}) *loader.RecordCollection {
 	return rc.WithContext(key, value)
 }
 
 // WithNewContext returns a copy of the current RecordSet with its context
 // replaced by the given one.
-func (DefaultMixinExtension[T]) commonMixinWithNewContext(rc *loader.RecordCollection, context *types.Context) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) WithNewContext(rc *loader.RecordCollection, context *types.Context) *loader.RecordCollection {
 	return rc.WithNewContext(context)
 }
 
 // Sudo returns a new RecordSet with the given userID
 // or the superuser ID if not specified
-func (DefaultMixinExtension[T]) commonMixinSudo(rc *loader.RecordCollection, userID ...int64) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Sudo(rc *loader.RecordCollection, userID ...int64) *loader.RecordCollection {
 	return rc.Sudo(userID...)
 }

@@ -95,11 +95,6 @@ func (mc *modelCollection) add(mi Repository[any, int64]) error {
 		log.Warn("Trying to add already existing model", "model", mi.TableName())
 		return errors.New(fmt.Sprintf("trying to initialize an existing model: %v", mi.TableName()))
 	}
-	// Register default model extension
-	err = mi.RegisterExtension(DefaultMixinExtension[any]{})
-	if err != nil {
-		log.Warn("register extension for this model")
-	}
 	// Register model
 	mc.registryByTableName[mi.TableName()] = mi
 	return nil

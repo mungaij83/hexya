@@ -16,6 +16,7 @@ package loader
 
 import (
 	"errors"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"strings"
 	"sync"
 
@@ -233,7 +234,7 @@ func (c *cache) addRecord(mi *Model, id int64, fMap FieldMap, ctxSlug string) {
 	var maxLen int
 	// We create our exprsMap with the length of the path as key
 	for _, path := range fMap.Keys() {
-		exprs := strings.Split(path, ExprSep)
+		exprs := strings.Split(path, conditions.ExprSep)
 		paths[len(exprs)] = append(paths[len(exprs)], path)
 		if len(exprs) > maxLen {
 			maxLen = len(exprs)
@@ -369,7 +370,7 @@ func (c *cache) getRelatedRefCommon(mi *Model, id int64, path string, ctxSlug st
 	if id == 0 {
 		return nil, 0, "", errors.New("requested value on RecordSet with ID=0")
 	}
-	exprs := jsonizeExpr(mi, strings.Split(path, ExprSep))
+	exprs := jsonizeExpr(mi, strings.Split(path, conditions.ExprSep))
 	if len(exprs) > 1 {
 		fkID, ok := c.get(mi, id, exprs[0], ctxSlug).(int64)
 		if !ok {
@@ -383,7 +384,7 @@ func (c *cache) getRelatedRefCommon(mi *Model, id int64, path string, ctxSlug st
 		if fkID == 0 {
 			return nil, 0, "", nonExistentPathError{}
 		}
-		return c.getRelatedRefCommon(relMI, fkID, strings.Join(exprs[1:], ExprSep), ctxSlug, strict)
+		return c.getRelatedRefCommon(relMI, fkID, strings.Join(exprs[1:], conditions.ExprSep), ctxSlug, strict)
 	}
 	return mi, id, exprs[0], nil
 }

@@ -3,6 +3,7 @@ package loader
 import (
 	"database/sql"
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/tools"
 	"github.com/hexya-erp/hexya/src/tools/strutils"
@@ -53,7 +54,7 @@ func (m *Model) Mixins() []*Model {
 // - If skipLast is true, getRelatedModelInfo does not follow the last part of the path
 // - If the last part of path is a non relational field, it is simply ignored, whatever
 // the value of skipLast.
-func (m *Model) getRelatedModelInfo(path FieldName, skipLast ...bool) *Model {
+func (m *Model) getRelatedModelInfo(path conditions.FieldName, skipLast ...bool) *Model {
 	if path == nil {
 		return m
 	}
@@ -62,7 +63,7 @@ func (m *Model) getRelatedModelInfo(path FieldName, skipLast ...bool) *Model {
 		skip = skipLast[0]
 	}
 
-	exprs := SplitFieldNames(path, ExprSep)
+	exprs := conditions.SplitFieldNames(path, conditions.ExprSep)
 	fi := m.fields.MustGet(exprs[0].JSON())
 	if fi.RelatedModel == nil || (len(exprs) == 1 && skip) {
 		// The field is a non relational field, so we are already
@@ -70,15 +71,15 @@ func (m *Model) getRelatedModelInfo(path FieldName, skipLast ...bool) *Model {
 		return m
 	}
 	if len(exprs) > 1 {
-		return fi.RelatedModel.getRelatedModelInfo(JoinFieldNames(exprs[1:], ExprSep), skipLast...)
+		return fi.RelatedModel.getRelatedModelInfo(conditions.JoinFieldNames(exprs[1:], conditions.ExprSep), skipLast...)
 	}
 	return fi.RelatedModel
 }
 
 // getRelatedFieldIfo returns the Field of the related field when
 // following path. Path can be formed from field names or JSON names.
-func (m *Model) GetRelatedFieldInfo(path FieldName) *Field {
-	colExprs := SplitFieldNames(path, ExprSep)
+func (m *Model) GetRelatedFieldInfo(path conditions.FieldName) *Field {
+	colExprs := conditions.SplitFieldNames(path, conditions.ExprSep)
 	var rmi *Model
 	num := len(colExprs)
 	if len(colExprs) > 1 {
@@ -121,7 +122,7 @@ func (m *Model) scanToFieldMap(r *sql.Rows, dest *FieldMap, substs map[string]st
 		if s, ok := substs[colName]; ok {
 			colName = s
 		}
-		colName = strings.Replace(colName, sqlSep, ExprSep, -1)
+		colName = strings.Replace(colName, conditions.SqlSep, conditions.ExprSep, -1)
 		dbVal := reflect.ValueOf(dbValue).Elem().Interface()
 		(*dest)[colName] = dbVal
 	}
@@ -147,7 +148,7 @@ func (m *Model) convertValuesToFieldType(fMap *FieldMap, writeDB bool) {
 		fi := m.GetRelatedFieldInfo(m.FieldName(colName))
 		fType := fi.structField.Type
 		typedValue := reflect.New(fType).Interface()
-		err := typesutils.Convert(fMapValue, typedValue, fi.isRelationField())
+		err := typesutils.Convert(fMapValue, typedValue, fi.IsRelationField())
 		if err != nil {
 			log.Panic(err.Error(), "model", m.name, "field", colName, "type", fType, "value", fMapValue)
 		}
@@ -240,7 +241,7 @@ func (m *Model) Fields() *FieldsCollection {
 }
 
 // FieldNames returns the slice of all field's names for this model
-func (m *Model) FieldNames() FieldNames {
+func (m *Model) FieldNames() conditions.FieldNames {
 	return m.fields.allFieldNames()
 }
 
@@ -284,19 +285,19 @@ func (m *Model) JSONizeFieldName(fieldName string) string {
 // FieldName returns a FieldName for the field with the given name.
 // name may be a dot separated path from this model.
 // It returns nil if the name is empty and panics if the path is invalid.
-func (m *Model) FieldName(name string) FieldName {
+func (m *Model) FieldName(name string) conditions.FieldName {
 	if name == "" {
 		return nil
 	}
 	jsonName := jsonizePath(m, name)
-	return fieldName{name: name, json: jsonName}
+	return conditions.NewFieldName(name, jsonName)
 }
 
 // Field starts a condition on this model
-func (m *Model) Field(name FieldName) *ConditionField {
-	newExprs := SplitFieldNames(name, ExprSep)
-	cp := ConditionField{}
-	cp.exprs = append(cp.exprs, newExprs...)
+func (m *Model) Field(name conditions.FieldName) *conditions.ConditionField {
+	newExprs := conditions.SplitFieldNames(name, conditions.ExprSep)
+	cp := conditions.ConditionField{}
+	cp.Exprs = append(cp.Exprs, newExprs...)
 	return &cp
 }
 
@@ -306,7 +307,7 @@ func (m *Model) Field(name FieldName) *ConditionField {
 // If no fields are given, then all fields are returned.
 //
 // The result map is indexed by the fields JSON names.
-func (m *Model) FieldsGet(fields ...FieldName) map[string]*FieldInfo {
+func (m *Model) FieldsGet(fields ...conditions.FieldName) map[string]*FieldInfo {
 	if len(fields) == 0 {
 		for n := range m.fields.registryByName {
 			fields = append(fields, m.FieldName(n))
@@ -355,12 +356,12 @@ func (m *Model) FieldsGet(fields ...FieldName) map[string]*FieldInfo {
 
 // FilteredOn adds a condition with a table join on the given field and
 // filters the result with the given condition
-func (m *Model) FilteredOn(field FieldName, condition *Condition) *Condition {
-	res := Condition{predicates: make([]predicate, len(condition.predicates))}
+func (m *Model) FilteredOn(field conditions.FieldName, condition *conditions.Condition) *conditions.Condition {
+	res := conditions.Condition{Predicates: make([]conditions.ConditionPredicate, len(condition.Predicates))}
 	i := 0
-	for _, p := range condition.predicates {
-		p.exprs = append([]FieldName{field}, p.exprs...)
-		res.predicates[i] = p
+	for _, p := range condition.Predicates {
+		p.Exprs = append([]conditions.FieldName{field}, p.Exprs...)
+		res.Predicates[i] = p
 		i++
 	}
 	return &res
@@ -368,24 +369,24 @@ func (m *Model) FilteredOn(field FieldName, condition *Condition) *Condition {
 
 // Create creates a new record in this model with the given data.
 func (m *Model) Create(env Environment, data interface{}) *RecordCollection {
-	return env.Pool(m.name).Call("Create", data).(RecordSet).Collection()
+	return env.Pool(m.name).Call("Create", data).(conditions.RecordSet).Collection().(*RecordCollection)
 }
 
 // Search searches the database and returns records matching the given condition.
-func (m *Model) Search(env Environment, cond Conditioner) *RecordCollection {
-	return env.Pool(m.name).Call("Search", cond).(RecordSet).Collection()
+func (m *Model) Search(env Environment, cond conditions.Conditioner) *RecordCollection {
+	return env.Pool(m.name).Call("Search", cond).(conditions.RecordSet).Collection().(*RecordCollection)
 }
 
 // Browse returns a new RecordSet with the records with the given ids.
 // Note that this function is just a shorcut for Search on a list of ids.
 func (m *Model) Browse(env Environment, ids []int64) *RecordCollection {
-	return env.Pool(m.name).Call("Browse", ids).(RecordSet).Collection()
+	return env.Pool(m.name).Call("Browse", ids).(conditions.RecordSet).Collection().(*RecordCollection)
 }
 
 // BrowseOne returns a new RecordSet with the record with the given id.
 // Note that this function is just a shorcut for Search the given id.
 func (m *Model) BrowseOne(env Environment, id int64) *RecordCollection {
-	return env.Pool(m.name).Call("BrowseOne", id).(RecordSet).Collection()
+	return env.Pool(m.name).Call("BrowseOne", id).(conditions.RecordSet).Collection().(*RecordCollection)
 }
 
 // AddSQLConstraint adds a table constraint in the database.

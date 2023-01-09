@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/security"
 	"sync"
 )
@@ -14,7 +15,7 @@ type RecordRule struct {
 	Name      string
 	Global    bool
 	Group     *security.Group
-	Condition *Condition
+	Condition *conditions.Condition
 	Perms     security.Permission
 }
 

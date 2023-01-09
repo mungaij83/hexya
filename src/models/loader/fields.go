@@ -17,6 +17,7 @@ package loader
 import (
 	"errors"
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/types"
 	"github.com/hexya-erp/hexya/src/tools/nbutils"
@@ -96,8 +97,8 @@ func (fc *FieldsCollection) MustGet(name string) *Field {
 
 // storedFieldNames returns a slice with the names of all the stored fields
 // If fields are given, return only names in the list
-func (fc *FieldsCollection) storedFieldNames(fieldNames ...FieldName) []FieldName {
-	var res []FieldName
+func (fc *FieldsCollection) storedFieldNames(fieldNames ...conditions.FieldName) []conditions.FieldName {
+	var res []conditions.FieldName
 	for fName, fi := range fc.registryByName {
 		var keepField bool
 		if len(fieldNames) == 0 {
@@ -118,8 +119,8 @@ func (fc *FieldsCollection) storedFieldNames(fieldNames ...FieldName) []FieldNam
 }
 
 // allFieldNames returns a slice with the name of all field's JSON names of this collection
-func (fc *FieldsCollection) allFieldNames() FieldNames {
-	res := make([]FieldName, len(fc.registryByJSON))
+func (fc *FieldsCollection) allFieldNames() conditions.FieldNames {
+	res := make([]conditions.FieldName, len(fc.registryByJSON))
 	var i int
 	for f := range fc.registryByName {
 		res[i] = fc.model.Fields().MustGet(f)
@@ -209,9 +210,9 @@ type Field struct {
 	stored           bool
 	required         bool
 	readOnly         bool
-	requiredFunc     func(Environment) (bool, Conditioner)
-	readOnlyFunc     func(Environment) (bool, Conditioner)
-	invisibleFunc    func(Environment) (bool, Conditioner)
+	requiredFunc     func(Environment) (bool, conditions.Conditioner)
+	readOnlyFunc     func(Environment) (bool, conditions.Conditioner)
+	invisibleFunc    func(Environment) (bool, conditions.Conditioner)
 	unique           bool
 	index            bool
 	Compute          string
@@ -231,7 +232,7 @@ type Field struct {
 	digits           nbutils.Digits
 	structField      reflect.StructField
 	relatedPathStr   string
-	relatedPath      FieldName
+	relatedPath      conditions.FieldName
 	dependencies     []computeData
 	embed            bool
 	NoCopy           bool
@@ -242,7 +243,7 @@ type Field struct {
 	OnChangeFilters  string
 	constraint       string
 	Inverse          string
-	filter           *Condition
+	filter           *conditions.Condition
 	contexts         FieldContexts
 	ctxType          ctxType
 	updates          []map[string]interface{}
@@ -258,8 +259,8 @@ func (f *Field) isRelatedField() bool {
 	return f.relatedPath != nil
 }
 
-// isRelationField returns true if this field points to another model
-func (f *Field) isRelationField() bool {
+// IsRelationField returns true if this field points to another model
+func (f *Field) IsRelationField() bool {
 	// We check on relatedModelName and not relatedModel to be able
 	// to use this method even if the models have not been bootstrapped yet.
 	return f.RelatedModelName != ""
@@ -320,7 +321,7 @@ func (f *Field) Name() string {
 	return f.name
 }
 
-var _ FieldName = new(Field)
+var _ conditions.FieldName = new(Field)
 
 // checkFieldInfo makes sanity checks on the given Field.
 // It panics in case of severe error and logs recoverable errors.
@@ -414,7 +415,7 @@ func checkOnChangeFiltersType(method *Method) error {
 		msg = "OnChangeFilters methods should return a value"
 	case methType.NumOut() > 1:
 		msg = "Too many return values for OnChangeFilters method"
-	case methType.Out(0) != reflect.TypeOf(map[FieldName]Conditioner{}):
+	case methType.Out(0) != reflect.TypeOf(map[conditions.FieldName]conditions.Conditioner{}):
 		msg = "OnChangeFilters methods returned value must be of type map[models.FieldName]models.Conditioner"
 	}
 	if msg != "" {

@@ -16,6 +16,7 @@ package loader
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"sort"
 
 	"github.com/hexya-erp/hexya/src/tools/typesutils"
@@ -46,8 +47,8 @@ func (rc *RecordCollection) computeFieldValues(params *FieldMap, fields ...strin
 // processTriggers execute computed fields recomputation (for stored fields) or
 // invalidation (for non stored fields) based on the data of each fields 'Depends'
 // attribute.
-func (rc *RecordCollection) processTriggers(keys FieldNames) {
-	if rc.Env().Context().GetBool("hexya_no_recompute_stored_fields") {
+func (rc *RecordCollection) processTriggers(keys conditions.FieldNames) {
+	if rc.Env().(Environment).Context().GetBool("hexya_no_recompute_stored_fields") {
 		return
 	}
 	rc.updateStoredFields(rc.retrieveComputeData(keys))
@@ -56,7 +57,7 @@ func (rc *RecordCollection) processTriggers(keys FieldNames) {
 // retrieveComputeData looks up fields that need to be recomputed when the given fields are modified.
 //
 // Returned value is an ordered slice of methods to apply on records
-func (rc *RecordCollection) retrieveComputeData(fields FieldNames) []recomputePair {
+func (rc *RecordCollection) retrieveComputeData(fields conditions.FieldNames) []recomputePair {
 	// Find record fields to update from the modified fields
 	var (
 		toUpdateKeys []string
@@ -84,7 +85,7 @@ func (rc *RecordCollection) retrieveComputeData(fields FieldNames) []recomputePa
 		recs := rc
 		if cData.path != "" {
 			cPath := cData.model.FieldName(cData.path)
-			recs = rc.Env().Pool(cData.model.name).Search(rc.Model().Field(cPath).In(rc.Ids()))
+			recs = rc.Env().(Environment).Pool(cData.model.name).Search(rc.Model().Field(cPath).In(rc.Ids()))
 		}
 		if !cData.stored {
 			// Field is not stored, just invalidating cache
@@ -122,8 +123,8 @@ func (rc *RecordCollection) applyMethod(methodName string) {
 			if f == "write_date" {
 				continue
 			}
-			if rs, isRS := rec.Get(rec.model.FieldName(f)).(RecordSet); isRS {
-				if !rs.Collection().Equals(v.(RecordSet).Collection()) {
+			if rs, isRS := rec.Get(rec.model.FieldName(f)).(conditions.RecordSet); isRS {
+				if !rs.Collection().(*RecordCollection).Equals(v.(conditions.RecordSet).Collection().(*RecordCollection)) {
 					doUpdate = true
 					break
 				}
@@ -148,7 +149,7 @@ func (rc *RecordCollection) processInverseMethods(data RecordData) {
 	for _, fieldName := range md.Underlying().Keys() {
 		fName := rc.model.FieldName(fieldName)
 		fi := rc.model.GetRelatedFieldInfo(fName)
-		if !fi.IsComputedField() || rc.Env().Context().GetBool("hexya_force_compute_write") {
+		if !fi.IsComputedField() || rc.Env().(Environment).Context().GetBool("hexya_force_compute_write") {
 			continue
 		}
 		if !md.Has(fName) {
@@ -156,7 +157,7 @@ func (rc *RecordCollection) processInverseMethods(data RecordData) {
 		}
 		val := md.Get(fName)
 		if fi.Inverse == "" {
-			if typesutils.IsZero(val) || rc.Env().Context().GetBool("hexya_ignore_computed_fields") {
+			if typesutils.IsZero(val) || rc.Env().(Environment).Context().GetBool("hexya_ignore_computed_fields") {
 				continue
 			}
 			log.Panic("Trying to write a computed field without inverse method", "model", rc.model.name, "field", fieldName)

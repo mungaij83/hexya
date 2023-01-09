@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"github.com/hexya-erp/hexya/src/tools"
 	"gorm.io/gorm"
@@ -26,8 +27,9 @@ type PrimaryKeys interface {
 // Repository Type of repository to represent any query link between
 type Repository[T any, K PrimaryKeys] interface {
 	Save(v interface{}) error
-	Search(cond loader.Condition) (interface{}, error)
+	Search(cond *conditions.Condition) (interface{}, error)
 	TableName() string
+	ModelName() string
 	Delete(v interface{}) (interface{}, error)
 	validateAndInitialize(modelLoader *ModelLoader) error
 	setEnv(v *loader.Environment) error
@@ -37,8 +39,10 @@ type Repository[T any, K PrimaryKeys] interface {
 	FindByIdsWithOptions(id []K, option RecordOptions) (interface{}, error)
 	Methods() *loader.MethodsCollection
 	Fields() *loader.FieldsCollection
-	GetFieldName(s string) loader.FieldName
+	GetFieldName(s string) conditions.FieldName
 	GetModel() (*loader.Model, bool)
+	Condition() *conditions.ModelConditionStart
+	Query(environment *loader.Environment) *loader.RecordCollection
 	IsMixin() bool
 	IsManual() bool
 	isSystem() bool
@@ -152,7 +156,7 @@ func (mr ModelRepository[T, K]) Save(v interface{}) error {
 	}
 	return nil
 }
-func (mr ModelRepository[T, K]) Search(cond loader.Condition) (interface{}, error) {
+func (mr ModelRepository[T, K]) Search(cond *conditions.Condition) (interface{}, error) {
 	var vv []T
 	err := mr.connection().Find(&vv).Error
 	if err != nil {
@@ -163,21 +167,41 @@ func (mr ModelRepository[T, K]) Search(cond loader.Condition) (interface{}, erro
 func (mr ModelRepository[T, K]) TableName() string {
 	return mr.tableName
 }
-
+func (mr ModelRepository[T, K]) ModelName() string {
+	mdl, ok := mr.GetModel()
+	if ok {
+		return mdl.Name()
+	}
+	return ""
+}
 func (mr ModelRepository[T, K]) Methods() *loader.MethodsCollection {
 	return mr.model.Methods()
+}
+
+func (mr ModelRepository[T, K]) Query(env *loader.Environment) *loader.RecordCollection {
+	var rc *loader.RecordCollection
+	if env == nil {
+		rc = loader.NewRecordCollection(mr.env, mr.model)
+	} else {
+		rc = loader.NewRecordCollection(env, mr.model)
+	}
+	return rc
+}
+
+func (mr ModelRepository[T, K]) Condition() *conditions.ModelConditionStart {
+	return &conditions.ModelConditionStart{&conditions.ConditionStart{}}
 }
 
 func (mr ModelRepository[T, K]) Fields() *loader.FieldsCollection {
 	return mr.Fields()
 }
 
-func (mr ModelRepository[T, K]) GetFieldName(s string) loader.FieldName {
+func (mr ModelRepository[T, K]) GetFieldName(s string) conditions.FieldName {
 	dd, ok := mr.model.Fields().Get(s)
 	if !ok {
 		return nil
 	}
-	return loader.NewFieldName(dd.Name(), dd.JSON())
+	return conditions.NewFieldName(dd.Name(), dd.JSON())
 }
 
 func (mr ModelRepository[T, K]) Delete(v interface{}) (interface{}, error) {

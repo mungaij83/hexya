@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/hexya-erp/hexya/src/i18n"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"github.com/hexya-erp/hexya/src/models/operator"
@@ -37,7 +38,7 @@ func (DefaultMixinExtension[T]) Create(rc *loader.RecordCollection, data loader.
 }
 
 // Read reads the database and returns a slice of FieldMap of the given model.
-func (DefaultMixinExtension[T]) Read(rc *loader.RecordCollection, fields loader.FieldNames) []loader.RecordData {
+func (DefaultMixinExtension[T]) Read(rc *loader.RecordCollection, fields conditions.FieldNames) []loader.RecordData {
 	var res []loader.RecordData
 	// Check if we have id in fields, and add it otherwise
 	fields = loader.AddIDIfNotPresent(fields)
@@ -58,7 +59,7 @@ func (DefaultMixinExtension[T]) Read(rc *loader.RecordCollection, fields loader.
 // i.e. "User.Profile.Age" or "user_id.profile_id.age".
 // If no fields are given, all DB columns of the RecordCollection's
 // model are retrieved.
-func (DefaultMixinExtension[T]) Load(rc *loader.RecordCollection, fields ...loader.FieldName) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Load(rc *loader.RecordCollection, fields ...conditions.FieldName) *loader.RecordCollection {
 	return rc.Load(fields...)
 }
 
@@ -77,7 +78,7 @@ func (DefaultMixinExtension[T]) Unlink(rc *loader.RecordCollection) int64 {
 // BrowseOne returns a new RecordSet with only the record with the given id.
 // Note that this function is just a shorcut for Search on a given id.
 func (DefaultMixinExtension[T]) BrowseOne(rc *loader.RecordCollection, id int64) *loader.RecordCollection {
-	return rc.Call("Search", rc.Model().Field(loader.ID).Equals(id)).(loader.RecordSet).Collection()
+	return rc.Call("Search", rc.Model().Field(conditions.ID).Equals(id)).(conditions.RecordSet).Collection().(*loader.RecordCollection)
 }
 
 // SearchCount fetch from the database the number of records that match the RecordSet conditions.
@@ -110,9 +111,9 @@ func (DefaultMixinExtension[T]) CopyData(rc *loader.RecordCollection, overrides 
 		switch fi.FieldType {
 		case fieldtype.One2One:
 			// One2one related records must be copied to avoid duplicate keys on FK
-			res = res.Create(fName, rc.Get(fName).(loader.RecordSet).Collection().Call("CopyData", nil).(loader.RecordData).Underlying())
+			res = res.Create(fName, rc.Get(fName).(conditions.RecordSet).Collection().(*loader.RecordCollection).Call("CopyData", nil).(loader.RecordData).Underlying())
 		case fieldtype.One2Many, fieldtype.Rev2One:
-			for _, rec := range rc.Get(fName).(loader.RecordSet).Collection().Records() {
+			for _, rec := range rc.Get(fName).(conditions.RecordSet).Collection().(*loader.RecordCollection).Records() {
 				res = res.Create(fName, rec.Call("CopyData", nil).(loader.RecordData).Underlying().Unset(fi.RelatedModel.FieldName(fi.ReverseFK)))
 			}
 		default:
@@ -131,8 +132,8 @@ func (DefaultMixinExtension[T]) CopyData(rc *loader.RecordCollection, overrides 
 func (DefaultMixinExtension[T]) Copy(rc *loader.RecordCollection, overrides loader.RecordData) *loader.RecordCollection {
 	rc.EnsureOne()
 	data := rc.Call("CopyData", overrides).(loader.RecordData).Underlying()
-	newRs := rc.Call("Create", data).(loader.RecordSet).Collection()
-	return newRs
+	newRs := rc.Call("Create", data).(conditions.RecordSet).Collection()
+	return newRs.(*loader.RecordCollection)
 }
 
 // NameGet retrieves the human readable name of this record.`,
@@ -157,7 +158,7 @@ func (DefaultMixinExtension[T]) NameGet(rc *loader.RecordCollection) string {
 // This is used for example to provide suggestions based on a partial
 // value for a relational field. Sometimes be seen as the inverse
 // function of NameGet but it is not guaranteed to be.
-func (DefaultMixinExtension[T]) SearchByName(rc *loader.RecordCollection, name string, op operator.Operator, additionalCond loader.Conditioner, limit int) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) SearchByName(rc *loader.RecordCollection, name string, op operator.Operator, additionalCond conditions.Conditioner, limit int) *loader.RecordCollection {
 	if op == "" {
 		op = operator.IContains
 	}
@@ -165,7 +166,7 @@ func (DefaultMixinExtension[T]) SearchByName(rc *loader.RecordCollection, name s
 	if !additionalCond.Underlying().IsEmpty() {
 		cond = cond.AndCond(additionalCond.Underlying())
 	}
-	return rc.Model().Search(rc.Env(), cond).Limit(limit)
+	return rc.Model().Search(rc.Env().(loader.Environment), cond).Limit(limit)
 }
 
 // FieldsGet returns the definition of each field.
@@ -178,7 +179,7 @@ func (DefaultMixinExtension[T]) FieldsGet(rc *loader.RecordCollection, args load
 	res := rc.Model().FieldsGet(args.Fields...)
 
 	// Translate attributes when required
-	lang := rc.Env().Context().GetString("lang")
+	lang := rc.Env().(loader.Environment).Context().GetString("lang")
 	for fName, fInfo := range res {
 		res[fName].Help = i18n.Registry.TranslateFieldHelp(lang, rc.Model().Name(), fInfo.Name, fInfo.Help)
 		res[fName].String = i18n.Registry.TranslateFieldDescription(lang, rc.Model().Name(), fInfo.Name, fInfo.String)
@@ -189,16 +190,16 @@ func (DefaultMixinExtension[T]) FieldsGet(rc *loader.RecordCollection, args load
 
 // FieldGet returns the definition of the given field.
 // The string, help, and selection (if present) attributes are translated.
-func (DefaultMixinExtension[T]) FieldGet(rc *loader.RecordCollection, field loader.FieldName) *loader.FieldInfo {
+func (DefaultMixinExtension[T]) FieldGet(rc *loader.RecordCollection, field conditions.FieldName) *loader.FieldInfo {
 	args := loader.FieldsGetArgs{
-		Fields: []loader.FieldName{field},
+		Fields: []conditions.FieldName{field},
 	}
 	return rc.Call("FieldsGet", args).(map[string]*loader.FieldInfo)[field.JSON()]
 }
 
 // DefaultGet returns a Params map with the default values for the model.
 func (DefaultMixinExtension[T]) DefaultGet(rc *loader.RecordCollection) *loader.ModelData {
-	res := rc.GetDefaults(rc.Env().Context().GetBool("hexya_ignore_computed_defaults"))
+	res := rc.GetDefaults(rc.Env().(loader.Environment).Context().GetBool("hexya_ignore_computed_defaults"))
 	return res
 }
 
@@ -223,7 +224,7 @@ func (mx DefaultMixinExtension[T]) CheckRecursion(rc *loader.RecordCollection) b
 		currentID := record.Ids()[0]
 		for {
 			var parentID sql.NullInt64
-			rc.Env().Cursor().Get(&parentID, query, currentID)
+			rc.Env().(loader.Environment).Cursor().Get(&parentID, query, currentID)
 			if !parentID.Valid {
 				break
 			}
@@ -241,17 +242,17 @@ func (mx DefaultMixinExtension[T]) CheckRecursion(rc *loader.RecordCollection) b
 func (DefaultMixinExtension[T]) OnChange(rc *loader.RecordCollection, params loader.OnchangeParams) loader.OnchangeResult {
 	var retValues *loader.ModelData
 	var warnings []string
-	filters := make(map[loader.FieldName]loader.Conditioner)
+	filters := make(map[conditions.FieldName]conditions.Conditioner)
 
-	err := loader.SimulateInNewEnvironment(rc.Env().Uid(), func(env loader.Environment) {
+	err := loader.SimulateInNewEnvironment(rc.Env().(loader.Environment).Uid(), func(env loader.Environment) {
 		values := params.Values.Underlying().FieldMap
 		data := loader.NewModelDataFromRS(rc.WithEnv(env), values)
 		if rc.IsNotEmpty() {
-			data.Set(loader.ID, rc.Ids()[0])
+			data.Set(conditions.ID, rc.Ids()[0])
 		}
 		retValues = loader.NewModelDataFromRS(rc.WithEnv(env))
 		var rs *loader.RecordCollection
-		if id, _ := nbutils.CastToInteger(data.Get(loader.ID)); id != 0 {
+		if id, _ := nbutils.CastToInteger(data.Get(conditions.ID)); id != 0 {
 			rs = rc.WithEnv(env).WithIds([]int64{id})
 			rs = rs.WithContext("hexya_onchange_origin", rs.First().Wrap())
 			rs.WithContext("hexya_force_compute_write", true).Update(data)
@@ -286,9 +287,9 @@ func (DefaultMixinExtension[T]) OnChange(rc *loader.RecordCollection, params loa
 				fnct = fi.Compute
 			}
 			rrs := rs
-			toks := loader.SplitFieldNames(field, loader.ExprSep)
+			toks := conditions.SplitFieldNames(field, conditions.ExprSep)
 			if len(toks) > 1 {
-				rrs = rs.Get(loader.JoinFieldNames(toks[:len(toks)-1], loader.ExprSep)).(loader.RecordSet).Collection()
+				rrs = rs.Get(conditions.JoinFieldNames(toks[:len(toks)-1], conditions.ExprSep)).(conditions.RecordSet).Collection().(*loader.RecordCollection)
 			}
 			// Values
 			if fnct != "" {
@@ -309,7 +310,7 @@ func (DefaultMixinExtension[T]) OnChange(rc *loader.RecordCollection, params loa
 			}
 			// Filters
 			if fi.OnChangeFilters != "" {
-				ff := rrs.Call(fi.OnChangeFilters).(map[loader.FieldName]loader.Conditioner)
+				ff := rrs.Call(fi.OnChangeFilters).(map[conditions.FieldName]conditions.Conditioner)
 				for k, v := range ff {
 					filters[k] = v
 				}
@@ -321,7 +322,7 @@ func (DefaultMixinExtension[T]) OnChange(rc *loader.RecordCollection, params loa
 			if fName.JSON() == "__last_update" {
 				continue
 			}
-			fi := rs.Collection().Model().GetRelatedFieldInfo(fName)
+			fi := rs.Collection().(*loader.RecordCollection).Model().GetRelatedFieldInfo(fName)
 			newVal := rs.Get(fName)
 			switch {
 			case fi.FieldType.IsRelationType():
@@ -340,7 +341,7 @@ func (DefaultMixinExtension[T]) OnChange(rc *loader.RecordCollection, params loa
 	if err != nil {
 		panic(err)
 	}
-	retValues.Unset(loader.ID)
+	retValues.Unset(conditions.ID)
 	return loader.OnchangeResult{
 		Value:   retValues,
 		Warning: strings.Join(warnings, "\n\n"),
@@ -350,14 +351,14 @@ func (DefaultMixinExtension[T]) OnChange(rc *loader.RecordCollection, params loa
 
 // Search returns a new RecordSet filtering on the current one with the
 // additional given Condition.
-func (DefaultMixinExtension[T]) Search(rc *loader.RecordCollection, cond loader.Conditioner) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Search(rc *loader.RecordCollection, cond conditions.Conditioner) *loader.RecordCollection {
 	return rc.Search(cond.Underlying())
 }
 
 // Browse returns a new RecordSet with only the records with the given ids.
 // Note that this function is just a shorcut for Search on a list of ids.
 func (DefaultMixinExtension[T]) Browse(rc *loader.RecordCollection, ids []int64) *loader.RecordCollection {
-	return rc.Call("Search", rc.Model().Field(loader.ID).In(ids)).(loader.RecordSet).Collection()
+	return rc.Call("Search", rc.Model().Field(conditions.ID).In(ids)).(conditions.RecordSet).Collection().(*loader.RecordCollection)
 }
 
 // Fetch query the database with the current filter and returns a RecordSet
@@ -375,7 +376,7 @@ func (DefaultMixinExtension[T]) SearchAll(rc *loader.RecordCollection) *loader.R
 }
 
 // GroupBy returns a new RecordSet grouped with the given GROUP BY expressions.
-func (DefaultMixinExtension[T]) GroupBy(rc *loader.RecordCollection, exprs ...loader.FieldName) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) GroupBy(rc *loader.RecordCollection, exprs ...conditions.FieldName) *loader.RecordCollection {
 	return rc.GroupBy(exprs...)
 }
 
@@ -399,38 +400,38 @@ func (DefaultMixinExtension[T]) OrderBy(rc *loader.RecordCollection, exprs ...st
 
 // Union returns a new RecordSet that is the union of this RecordSet and the given
 // "other" RecordSet. The result is guaranteed to be a set of unique records.
-func (DefaultMixinExtension[T]) Union(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Union(rc *loader.RecordCollection, other conditions.RecordSet) *loader.RecordCollection {
 	return rc.Union(other)
 }
 
 // Subtract returns a RecordSet with the Records that are in this
 // RecordCollection but not in the given 'other' one.
 // The result is guaranteed to be a set of unique records.
-func (DefaultMixinExtension[T]) Subtract(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Subtract(rc *loader.RecordCollection, other conditions.RecordSet) *loader.RecordCollection {
 	return rc.Subtract(other)
 }
 
 // Intersect returns a new RecordCollection with only the records that are both
 // in this RecordCollection and in the other RecordSet.
-func (DefaultMixinExtension[T]) Intersect(rc *loader.RecordCollection, other loader.RecordSet) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Intersect(rc *loader.RecordCollection, other conditions.RecordSet) *loader.RecordCollection {
 	return rc.Intersect(other)
 }
 
 // CartesianProduct returns the cartesian product of this RecordCollection with others.
-func (DefaultMixinExtension[T]) CartesianProduct(rc *loader.RecordCollection, other ...loader.RecordSet) []*loader.RecordCollection {
+func (DefaultMixinExtension[T]) CartesianProduct(rc *loader.RecordCollection, other ...conditions.RecordSet) []*loader.RecordCollection {
 	return rc.CartesianProduct(other...)
 }
 
 // Equals returns true if this RecordSet is the same as other
 // i.e. they are of the same model and have the same ids
-func (DefaultMixinExtension[T]) Equals(rc *loader.RecordCollection, other loader.RecordSet) bool {
+func (DefaultMixinExtension[T]) Equals(rc *loader.RecordCollection, other conditions.RecordSet) bool {
 	return rc.Equals(other)
 }
 
 // Sorted returns a new RecordCollection sorted according to the given less function.
 //
 // The less function should return true if rs1 < rs2`,
-func (DefaultMixinExtension[T]) Sorted(rc *loader.RecordCollection, less func(rs1 loader.RecordSet, rs2 loader.RecordSet) bool) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Sorted(rc *loader.RecordCollection, less func(rs1 conditions.RecordSet, rs2 conditions.RecordSet) bool) *loader.RecordCollection {
 	return rc.Sorted(less)
 }
 
@@ -442,7 +443,7 @@ func (DefaultMixinExtension[T]) SortedDefault(rc *loader.RecordCollection) *load
 
 // SortedByField returns a new record set with the same records as rc but sorted by the given field.
 // If reverse is true, the sort is done in reversed order
-func (DefaultMixinExtension[T]) SortedByField(rc *loader.RecordCollection, namer loader.FieldName, reverse bool) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) SortedByField(rc *loader.RecordCollection, namer conditions.FieldName, reverse bool) *loader.RecordCollection {
 	return rc.SortedByField(namer, reverse)
 }
 
@@ -452,7 +453,7 @@ func (DefaultMixinExtension[T]) SortedByField(rc *loader.RecordCollection, namer
 // Note that if this record set is not fully loaded, this function will call the database
 // to load the fields before doing the filtering. In this case, it might be more efficient
 // to search the database directly with the filter condition.
-func (DefaultMixinExtension[T]) Filtered(rc *loader.RecordCollection, test func(rs loader.RecordSet) bool) *loader.RecordCollection {
+func (DefaultMixinExtension[T]) Filtered(rc *loader.RecordCollection, test func(rs conditions.RecordSet) bool) *loader.RecordCollection {
 	return rc.Filtered(test)
 }
 
@@ -471,7 +472,7 @@ func (DefaultMixinExtension[T]) CheckExecutionPermission(rc *loader.RecordCollec
 
 // SQLFromCondition returns the WHERE clause sql and arguments corresponding to
 // the given condition.`,
-func (DefaultMixinExtension[T]) SQLFromCondition(rc *loader.RecordCollection, c *loader.Condition) (string, loader.SQLParams) {
+func (DefaultMixinExtension[T]) SQLFromCondition(rc *loader.RecordCollection, c *conditions.Condition) (string, loader.SQLParams) {
 	return rc.SQLFromCondition(c)
 }
 

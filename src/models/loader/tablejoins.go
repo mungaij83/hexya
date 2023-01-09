@@ -16,6 +16,7 @@ package loader
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 )
 
 // tableJoin represents a join in a SQL query
@@ -23,11 +24,11 @@ import (
 type tableJoin struct {
 	tableName  string
 	joined     bool
-	field      FieldName
+	field      conditions.FieldName
 	otherTable *tableJoin
-	otherField FieldName
+	otherField conditions.FieldName
 	alias      string
-	expr       FieldName
+	expr       conditions.FieldName
 }
 
 // sqlString returns the sql string for the tableJoin Clause

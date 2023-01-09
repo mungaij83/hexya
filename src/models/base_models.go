@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+type NamedModel interface {
+	ModelName() string
+}
+
 type OrderedTableModel interface {
 	OrderFields() []string
 }

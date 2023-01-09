@@ -5,6 +5,7 @@ package fields
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"log"
 	"sort"
@@ -35,9 +36,9 @@ type Binary struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -69,9 +70,9 @@ type Boolean struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -107,9 +108,9 @@ type Char struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -145,9 +146,9 @@ type Date struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -182,9 +183,9 @@ type DateTime struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -217,9 +218,9 @@ type Float struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -259,9 +260,9 @@ type HTML struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -295,9 +296,9 @@ type Integer struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -332,12 +333,13 @@ type Many2Many struct {
 	JSON             string
 	String           string
 	Help             string
+	ModelName        string
 	Stored           bool
 	Required         bool
 	ReadOnly         bool
-	RequiredFunc     func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc     func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc    func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc     func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc     func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc    func(loader.Environment) (bool, conditions.Conditioner)
 	Index            bool
 	Compute          loader.Methoder
 	Depends          []string
@@ -351,7 +353,7 @@ type Many2Many struct {
 	OnChangeWarning  loader.Methoder
 	OnChangeFilters  loader.Methoder
 	Constraint       loader.Methoder
-	Filter           loader.Conditioner
+	Filter           conditions.Conditioner
 	Inverse          loader.Methoder
 	Default          func(loader.Environment) interface{}
 }
@@ -399,12 +401,13 @@ type Many2One struct {
 	JSON            string
 	String          string
 	Help            string
+	ModelName       string
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Index           bool
 	Compute         loader.Methoder
 	Depends         []string
@@ -417,7 +420,7 @@ type Many2One struct {
 	OnChangeWarning loader.Methoder
 	OnChangeFilters loader.Methoder
 	Constraint      loader.Methoder
-	Filter          loader.Conditioner
+	Filter          conditions.Conditioner
 	Inverse         loader.Methoder
 	Contexts        loader.FieldContexts
 	Default         func(loader.Environment) interface{}
@@ -458,9 +461,10 @@ type One2Many struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	ModelName       string
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Index           bool
 	Compute         loader.Methoder
 	Depends         []string
@@ -472,7 +476,7 @@ type One2Many struct {
 	OnChangeWarning loader.Methoder
 	OnChangeFilters loader.Methoder
 	Constraint      loader.Methoder
-	Filter          loader.Conditioner
+	Filter          conditions.Conditioner
 	Inverse         loader.Methoder
 	Default         func(loader.Environment) interface{}
 }
@@ -504,10 +508,11 @@ type One2One struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Index           bool
+	ModelName       string
 	Compute         loader.Methoder
 	Depends         []string
 	Related         string
@@ -519,7 +524,7 @@ type One2One struct {
 	OnChangeWarning loader.Methoder
 	OnChangeFilters loader.Methoder
 	Constraint      loader.Methoder
-	Filter          loader.Conditioner
+	Filter          conditions.Conditioner
 	Inverse         loader.Methoder
 	Contexts        loader.FieldContexts
 	Default         func(loader.Environment) interface{}
@@ -561,9 +566,9 @@ type Rev2One struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Index           bool
 	Compute         loader.Methoder
 	Depends         []string
@@ -575,7 +580,7 @@ type Rev2One struct {
 	OnChangeWarning loader.Methoder
 	OnChangeFilters loader.Methoder
 	Constraint      loader.Methoder
-	Filter          loader.Conditioner
+	Filter          conditions.Conditioner
 	Inverse         loader.Methoder
 	Default         func(loader.Environment) interface{}
 }
@@ -604,9 +609,9 @@ type Selection struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder
@@ -643,9 +648,9 @@ type Text struct {
 	Stored          bool
 	Required        bool
 	ReadOnly        bool
-	RequiredFunc    func(loader.Environment) (bool, loader.Conditioner)
-	ReadOnlyFunc    func(loader.Environment) (bool, loader.Conditioner)
-	InvisibleFunc   func(loader.Environment) (bool, loader.Conditioner)
+	RequiredFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	ReadOnlyFunc    func(loader.Environment) (bool, conditions.Conditioner)
+	InvisibleFunc   func(loader.Environment) (bool, conditions.Conditioner)
 	Unique          bool
 	Index           bool
 	Compute         loader.Methoder

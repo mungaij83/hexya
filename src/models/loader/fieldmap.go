@@ -4,6 +4,7 @@
 package loader
 
 import (
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"sort"
 )
 
@@ -30,8 +31,8 @@ func (fm FieldMap) OrderedKeys() []string {
 }
 
 // FieldNames returns the keys of this FieldMap as FieldNames of the given model
-func (fm FieldMap) FieldNames(model *Model) FieldNames {
-	res := make(FieldNames, len(fm))
+func (fm FieldMap) FieldNames(model *Model) conditions.FieldNames {
+	res := make(conditions.FieldNames, len(fm))
 	var i int
 	for k := range fm {
 		res[i] = model.FieldName(k)
@@ -69,7 +70,7 @@ func (fm *FieldMap) RemovePKIfZero() {
 // Get returns the value of the given field referring to the given model.
 // field can be either a field name (or path) or a field JSON name (or path).
 // The second returned value is true if the field has been found in the FieldMap
-func (fm FieldMap) Get(field FieldName) (interface{}, bool) {
+func (fm FieldMap) Get(field conditions.FieldName) (interface{}, bool) {
 	val, ok := fm[field.Name()]
 	if !ok {
 		val, ok = fm[field.JSON()]
@@ -83,7 +84,7 @@ func (fm FieldMap) Get(field FieldName) (interface{}, bool) {
 // MustGet returns the value of the given field referring to the given model.
 // field can be either a field name (or path) or a field JSON name (or path).
 // It panics if the field is not found.
-func (fm FieldMap) MustGet(field FieldName) interface{} {
+func (fm FieldMap) MustGet(field conditions.FieldName) interface{} {
 	val, ok := fm.Get(field)
 	if !ok {
 		log.Panic("Field not found in FieldMap", "field", field.Name(), "fMap", fm)
@@ -95,7 +96,7 @@ func (fm FieldMap) MustGet(field FieldName) interface{} {
 // If the field already exists, then it is updated with value.
 // Otherwise, a new entry is inserted in the FieldMap with the
 // JSON name of the field.
-func (fm *FieldMap) Set(field FieldName, value interface{}) {
+func (fm *FieldMap) Set(field conditions.FieldName, value interface{}) {
 	key := field.Name()
 	_, ok := (*fm)[key]
 	if !ok {
@@ -106,7 +107,7 @@ func (fm *FieldMap) Set(field FieldName, value interface{}) {
 
 // Delete removes the given field from this FieldMap.
 // Calling Del on a non existent field is a no op.
-func (fm *FieldMap) Delete(field FieldName) {
+func (fm *FieldMap) Delete(field conditions.FieldName) {
 	key := field.Name()
 	_, ok := (*fm)[key]
 	if !ok {

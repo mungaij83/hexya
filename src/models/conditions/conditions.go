@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package loader
+package conditions
 
 import (
 	"fmt"
@@ -21,67 +21,60 @@ import (
 	"github.com/hexya-erp/hexya/src/models/operator"
 )
 
-// Expression separation symbols
-const (
-	ExprSep    = "."
-	sqlSep     = "__"
-	ContextSep = "|"
-)
-
-// A predicate of a condition in the form 'Field = arg'
-type predicate struct {
-	exprs    []FieldName
-	operator operator.Operator
-	arg      interface{}
-	cond     *Condition
-	isOr     bool
-	isNot    bool
-	isCond   bool
+// A ConditionPredicate of a condition in the form 'Field = arg'
+type ConditionPredicate struct {
+	Exprs        []FieldName
+	CondOperator operator.Operator
+	Arg          interface{}
+	Cond         *Condition
+	IsOr         bool
+	IsNot        bool
+	IsCond       bool
 }
 
-// Field returns the field name of this predicate
-func (p predicate) Field() FieldName {
-	return JoinFieldNames(p.exprs, ExprSep)
+// Field returns the field name of this ConditionPredicate
+func (p ConditionPredicate) Field() FieldName {
+	return JoinFieldNames(p.Exprs, ExprSep)
 }
 
-// Operator returns the operator of this predicate
-func (p predicate) Operator() operator.Operator {
-	return p.operator
+// Operator returns the CondOperator of this ConditionPredicate
+func (p ConditionPredicate) Operator() operator.Operator {
+	return p.CondOperator
 }
 
-// Argument returns the argument of this predicate
-func (p predicate) Argument() interface{} {
-	return p.arg
+// Argument returns the argument of this ConditionPredicate
+func (p ConditionPredicate) Argument() interface{} {
+	return p.Arg
 }
 
-// AlterField changes the field of this predicate
-func (p *predicate) AlterField(f FieldName) *predicate {
+// AlterField changes the field of this ConditionPredicate
+func (p *ConditionPredicate) AlterField(f FieldName) *ConditionPredicate {
 	if f == nil || f.Name() == "" {
 		log.Panic("AlterField must be called with a field name", "field", f)
 	}
-	p.exprs = SplitFieldNames(f, ExprSep)
+	p.Exprs = SplitFieldNames(f, ExprSep)
 	return p
 }
 
-// AlterOperator changes the operator of this predicate
-func (p *predicate) AlterOperator(op operator.Operator) *predicate {
-	p.operator = op
+// AlterOperator changes the CondOperator of this ConditionPredicate
+func (p *ConditionPredicate) AlterOperator(op operator.Operator) *ConditionPredicate {
+	p.CondOperator = op
 	return p
 }
 
-// AlterArgument changes the argument of this predicate
-func (p *predicate) AlterArgument(arg interface{}) *predicate {
-	p.arg = arg
+// AlterArgument changes the argument of this ConditionPredicate
+func (p *ConditionPredicate) AlterArgument(arg interface{}) *ConditionPredicate {
+	p.Arg = arg
 	return p
 }
 
 // A Condition represents a WHERE clause of an SQL query.
 type Condition struct {
-	predicates []predicate
+	Predicates []ConditionPredicate
 }
 
 // newCondition returns a new condition struct
-func newCondition() *Condition {
+func NewCondition() *Condition {
 	c := &Condition{}
 	return c
 }
@@ -98,7 +91,7 @@ func (c Condition) And() *ConditionStart {
 // between brackets : c.And(cond) => (c) AND (cond)
 func (c Condition) AndCond(cond *Condition) *Condition {
 	if !cond.IsEmpty() {
-		c.predicates = append(c.predicates, predicate{cond: cond, isCond: true})
+		c.Predicates = append(c.Predicates, ConditionPredicate{Cond: cond, IsCond: true})
 	}
 	return &c
 }
@@ -117,7 +110,7 @@ func (c Condition) AndNot() *ConditionStart {
 // brackets : c.AndNot(cond) => (c) AND NOT (cond)
 func (c Condition) AndNotCond(cond *Condition) *Condition {
 	if !cond.IsEmpty() {
-		c.predicates = append(c.predicates, predicate{cond: cond, isCond: true, isNot: true})
+		c.Predicates = append(c.Predicates, ConditionPredicate{Cond: cond, IsCond: true, IsNot: true})
 	}
 	return &c
 }
@@ -135,7 +128,7 @@ func (c Condition) Or() *ConditionStart {
 // brackets : c.Or(cond) => (c) OR (cond)
 func (c Condition) OrCond(cond *Condition) *Condition {
 	if !cond.IsEmpty() {
-		c.predicates = append(c.predicates, predicate{cond: cond, isCond: true, isOr: true})
+		c.Predicates = append(c.Predicates, ConditionPredicate{Cond: cond, IsCond: true, IsOr: true})
 	}
 	return &c
 }
@@ -154,35 +147,35 @@ func (c Condition) OrNot() *ConditionStart {
 // brackets : c.OrNot(cond) => (c) OR NOT (cond)
 func (c Condition) OrNotCond(cond *Condition) *Condition {
 	if !cond.IsEmpty() {
-		c.predicates = append(c.predicates, predicate{cond: cond, isCond: true, isOr: true, isNot: true})
+		c.Predicates = append(c.Predicates, ConditionPredicate{Cond: cond, IsCond: true, IsOr: true, IsNot: true})
 	}
 	return &c
 }
 
 // Serialize returns the condition as a list which mimics Odoo domains.
 func (c Condition) Serialize() []interface{} {
-	return serializePredicates(c.predicates)
+	return serializePredicates(c.Predicates)
 }
 
 // HasField returns true if the given field is in at least one of the
 // the predicates of this condition or of one of its nested conditions.
-func (c Condition) HasField(f *Field) bool {
-	preds := c.PredicatesWithField(f)
+func (c Condition) HasField(jsonName string) bool {
+	preds := c.PredicatesWithField(jsonName)
 	return len(preds) > 0
 }
 
 // PredicatesWithField returns all predicates of this condition (including
 // nested conditions) that concern the given field.
-func (c Condition) PredicatesWithField(f *Field) []*predicate {
-	var res []*predicate
-	for i, pred := range c.predicates {
-		if len(pred.exprs) > 0 {
-			if JoinFieldNames(pred.exprs, ExprSep).JSON() == f.json {
-				res = append(res, &c.predicates[i])
+func (c Condition) PredicatesWithField(jsonName string) []*ConditionPredicate {
+	var res []*ConditionPredicate
+	for i, pred := range c.Predicates {
+		if len(pred.Exprs) > 0 {
+			if JoinFieldNames(pred.Exprs, ExprSep).JSON() == jsonName {
+				res = append(res, &c.Predicates[i])
 			}
 		}
-		if pred.cond != nil {
-			res = append(res, c.predicates[i].cond.PredicatesWithField(f)...)
+		if pred.Cond != nil {
+			res = append(res, c.Predicates[i].Cond.PredicatesWithField(jsonName)...)
 		}
 	}
 	return res
@@ -191,20 +184,20 @@ func (c Condition) PredicatesWithField(f *Field) []*predicate {
 // String method for the Condition. Recursively print all predicates.
 func (c Condition) String() string {
 	var res string
-	for _, p := range c.predicates {
-		if p.isOr {
+	for _, p := range c.Predicates {
+		if p.IsOr {
 			res += "OR "
 		} else {
 			res += "AND "
 		}
-		if p.isNot {
+		if p.IsNot {
 			res += "NOT "
 		}
-		if p.isCond {
-			res += fmt.Sprintf("(\n%s\n)\n", p.cond.String())
+		if p.IsCond {
+			res += fmt.Sprintf("(\n%s\n)\n", p.Cond.String())
 			continue
 		}
-		res += fmt.Sprintf("%s %s %v\n", JoinFieldNames(p.exprs, ExprSep).Name(), p.operator, p.arg)
+		res += fmt.Sprintf("%s %s %v\n", JoinFieldNames(p.Exprs, ExprSep).Name(), p.CondOperator, p.Arg)
 	}
 	return res
 }
@@ -217,19 +210,23 @@ func (c Condition) Underlying() *Condition {
 var _ Conditioner = Condition{}
 
 // A ConditionStart is an object representing a Condition when
-// we just added a logical operator (AND, OR, ...) and we are
-// about to add a predicate.
+// we just added a logical CondOperator (AND, OR, ...) and we are
+// about to add a ConditionPredicate.
 type ConditionStart struct {
 	cond      Condition
 	nextIsOr  bool
 	nextIsNot bool
 }
 
+func (cs ConditionStart) FieldName(name string) *ConditionField {
+	return cs.Field(NewFieldName(name, name))
+}
+
 // Field adds a field path (dot separated) to this condition
 func (cs ConditionStart) Field(name FieldName) *ConditionField {
 	newExprs := SplitFieldNames(name, ExprSep)
 	cp := ConditionField{cs: cs}
-	cp.exprs = append(cp.exprs, newExprs...)
+	cp.Exprs = append(cp.Exprs, newExprs...)
 	return &cp
 }
 
@@ -237,69 +234,52 @@ func (cs ConditionStart) Field(name FieldName) *ConditionField {
 // filters the result with the given condition
 func (cs ConditionStart) FilteredOn(field FieldName, condition *Condition) *Condition {
 	res := cs.cond
-	for i, p := range condition.predicates {
-		condition.predicates[i].exprs = append([]FieldName{field}, p.exprs...)
+	for i, p := range condition.Predicates {
+		condition.Predicates[i].Exprs = append([]FieldName{field}, p.Exprs...)
 	}
-	condition.predicates[0].isOr = cs.nextIsOr
-	condition.predicates[0].isNot = cs.nextIsNot
-	res.predicates = append(res.predicates, condition.predicates...)
+	condition.Predicates[0].IsOr = cs.nextIsOr
+	condition.Predicates[0].IsNot = cs.nextIsNot
+	res.Predicates = append(res.Predicates, condition.Predicates...)
 	return &res
-}
-
-// A ConditionField is a partial Condition when we have set
-// a field name in a predicate and are about to add an operator.
-type ConditionField struct {
-	cs    ConditionStart
-	exprs []FieldName
-}
-
-// JSON returns the json field name of this ConditionField
-func (c ConditionField) JSON() string {
-	return JoinFieldNames(c.exprs, ExprSep).JSON()
-}
-
-// Name method for ConditionField
-func (c ConditionField) Name() string {
-	return JoinFieldNames(c.exprs, ExprSep).Name()
 }
 
 var _ FieldName = ConditionField{}
 
-// AddOperator adds a condition value to the condition with the given operator and data
+// AddOperator adds a condition value to the condition with the given CondOperator and data
 // If multi is true, a recordset will be converted into a slice of int64
 // otherwise, it will return an int64 and panic if the recordset is not
 // a singleton.
 //
-// This method is low level and should be avoided. Use operator methods such as Equals()
+// This method is low level and should be avoided. Use CondOperator methods such as Equals()
 // instead.
 func (c ConditionField) AddOperator(op operator.Operator, data interface{}) *Condition {
 	cond := c.cs.cond
-	data = sanitizeArgs(data, op.IsMulti())
+	data = SanitizeArgs(data, op.IsMulti())
 	if data != nil && op.IsMulti() && reflect.ValueOf(data).Kind() == reflect.Slice && reflect.ValueOf(data).Len() == 0 {
 		// field in [] => ID = -1
-		cond.predicates = []predicate{{
-			exprs:    []FieldName{ID},
-			operator: operator.Equals,
-			arg:      -1,
+		cond.Predicates = []ConditionPredicate{{
+			Exprs:        []FieldName{ID},
+			CondOperator: operator.Equals,
+			Arg:          -1,
 		}}
 		return &cond
 	}
-	cond.predicates = append(cond.predicates, predicate{
-		exprs:    c.exprs,
-		operator: op,
-		arg:      data,
-		isNot:    c.cs.nextIsNot,
-		isOr:     c.cs.nextIsOr,
+	cond.Predicates = append(cond.Predicates, ConditionPredicate{
+		Exprs:        c.Exprs,
+		CondOperator: op,
+		Arg:          data,
+		IsNot:        c.cs.nextIsNot,
+		IsOr:         c.cs.nextIsOr,
 	})
 	return &cond
 }
 
-// sanitizeArgs returns the given args suitable for SQL query
+// SanitizeArgs returns the given args suitable for SQL query
 // In particular, retrieves the ids of a recordset if args is one.
 // If multi is true, a recordset will be converted into a slice of int64
 // otherwise, it will return an int64 and panic if the recordset is not
 // a singleton
-func sanitizeArgs(args interface{}, multi bool) interface{} {
+func SanitizeArgs(args interface{}, multi bool) interface{} {
 	if rs, ok := args.(RecordSet); ok {
 		if multi {
 			return rs.Ids()
@@ -315,77 +295,77 @@ func sanitizeArgs(args interface{}, multi bool) interface{} {
 	return args
 }
 
-// Equals appends the '=' operator to the current Condition
+// Equals appends the '=' CondOperator to the current Condition
 func (c ConditionField) Equals(data interface{}) *Condition {
 	return c.AddOperator(operator.Equals, data)
 }
 
-// NotEquals appends the '!=' operator to the current Condition
+// NotEquals appends the '!=' CondOperator to the current Condition
 func (c ConditionField) NotEquals(data interface{}) *Condition {
 	return c.AddOperator(operator.NotEquals, data)
 }
 
-// Greater appends the '>' operator to the current Condition
+// Greater appends the '>' CondOperator to the current Condition
 func (c ConditionField) Greater(data interface{}) *Condition {
 	return c.AddOperator(operator.Greater, data)
 }
 
-// GreaterOrEqual appends the '>=' operator to the current Condition
+// GreaterOrEqual appends the '>=' CondOperator to the current Condition
 func (c ConditionField) GreaterOrEqual(data interface{}) *Condition {
 	return c.AddOperator(operator.GreaterOrEqual, data)
 }
 
-// Lower appends the '<' operator to the current Condition
+// Lower appends the '<' CondOperator to the current Condition
 func (c ConditionField) Lower(data interface{}) *Condition {
 	return c.AddOperator(operator.Lower, data)
 }
 
-// LowerOrEqual appends the '<=' operator to the current Condition
+// LowerOrEqual appends the '<=' CondOperator to the current Condition
 func (c ConditionField) LowerOrEqual(data interface{}) *Condition {
 	return c.AddOperator(operator.LowerOrEqual, data)
 }
 
-// Like appends the 'LIKE' operator to the current Condition
+// Like appends the 'LIKE' CondOperator to the current Condition
 func (c ConditionField) Like(data interface{}) *Condition {
 	return c.AddOperator(operator.Like, data)
 }
 
-// ILike appends the 'ILIKE' operator to the current Condition
+// ILike appends the 'ILIKE' CondOperator to the current Condition
 func (c ConditionField) ILike(data interface{}) *Condition {
 	return c.AddOperator(operator.ILike, data)
 }
 
-// Contains appends the 'LIKE %%' operator to the current Condition
+// Contains appends the 'LIKE %%' CondOperator to the current Condition
 func (c ConditionField) Contains(data interface{}) *Condition {
 	return c.AddOperator(operator.Contains, data)
 }
 
-// NotContains appends the 'NOT LIKE %%' operator to the current Condition
+// NotContains appends the 'NOT LIKE %%' CondOperator to the current Condition
 func (c ConditionField) NotContains(data interface{}) *Condition {
 	return c.AddOperator(operator.NotContains, data)
 }
 
-// IContains appends the 'ILIKE %%' operator to the current Condition
+// IContains appends the 'ILIKE %%' CondOperator to the current Condition
 func (c ConditionField) IContains(data interface{}) *Condition {
 	return c.AddOperator(operator.IContains, data)
 }
 
-// NotIContains appends the 'NOT ILIKE %%' operator to the current Condition
+// NotIContains appends the 'NOT ILIKE %%' CondOperator to the current Condition
 func (c ConditionField) NotIContains(data interface{}) *Condition {
 	return c.AddOperator(operator.NotIContains, data)
 }
 
-// In appends the 'IN' operator to the current Condition
+// In appends the 'IN' CondOperator to the current Condition
 func (c ConditionField) In(data interface{}) *Condition {
 	return c.AddOperator(operator.In, data)
 }
 
-// NotIn appends the 'NOT IN' operator to the current Condition
+// NotIn appends the 'NOT IN' CondOperator to the current Condition
 func (c ConditionField) NotIn(data interface{}) *Condition {
 	return c.AddOperator(operator.NotIn, data)
 }
 
-// ChildOf appends the 'child of' operator to the current Condition
+// ChildOf appends the 'child of' CondOperator to the current Condition
 func (c ConditionField) ChildOf(data interface{}) *Condition {
 	return c.AddOperator(operator.ChildOf, data)
 }
@@ -405,65 +385,60 @@ func (c *Condition) IsEmpty() bool {
 	switch {
 	case c == nil:
 		return true
-	case len(c.predicates) == 0:
+	case len(c.Predicates) == 0:
 		return true
-	case len(c.predicates) == 1 && c.predicates[0].cond != nil && c.predicates[0].cond.IsEmpty():
+	case len(c.Predicates) == 1 && c.Predicates[0].Cond != nil && c.Predicates[0].Cond.IsEmpty():
 		return true
 	}
 	return false
 }
 
-// getAllExpressions returns a list of all exprs used in this condition,
-// and recursively in all subconditions.
-// Expressions are given in field json format
-func (c Condition) getAllExpressions(mi *Model) [][]FieldName {
+// // GetAllExpressions returns a list of all exprs used in this condition,
+// // and recursively in all subconditions.
+// // Expressions are given in field json format
+func (c Condition) GetAllExpressions() [][]FieldName {
 	var res [][]FieldName
-	for _, p := range c.predicates {
-		res = append(res, p.exprs)
-		if p.cond != nil {
-			res = append(res, p.cond.getAllExpressions(mi)...)
+	for _, p := range c.Predicates {
+		res = append(res, p.Exprs)
+		if p.Cond != nil {
+			res = append(res, p.Cond.GetAllExpressions()...)
 		}
 	}
 	return res
 }
 
-// substituteExprs recursively replaces condition exprs that match substs keys
-// with the corresponding substs values.
-func (c *Condition) substituteExprs(mi *Model, substs map[FieldName][]FieldName) {
-	for i, p := range c.predicates {
+// // SubstituteExprs recursively replaces condition exprs that match substs keys
+// // with the corresponding substs values.
+func (c *Condition) SubstituteExprs(substs map[FieldName][]FieldName) {
+	for i, p := range c.Predicates {
 		for k, v := range substs {
-			if len(p.exprs) > 0 && JoinFieldNames(p.exprs, ExprSep) == k {
-				c.predicates[i].exprs = v
+			if len(p.Exprs) > 0 && JoinFieldNames(p.Exprs, ExprSep) == k {
+				c.Predicates[i].Exprs = v
 			}
 		}
-		if p.cond != nil {
-			p.cond.substituteExprs(mi, substs)
+		if p.Cond != nil {
+			p.Cond.SubstituteExprs(substs)
 		}
 	}
 }
 
-// substituteChildOfOperator recursively replaces in the condition the
-// predicates with ChildOf operator by the predicates to actually execute.
-func (c *Condition) substituteChildOfOperator(rc *RecordCollection) {
-	for i, p := range c.predicates {
-		if p.cond != nil {
-			p.cond.substituteChildOfOperator(rc)
+// // SubstituteChildOfOperator recursively replaces in the condition the
+// // predicates with ChildOf CondOperator by the predicates to actually execute.
+func (c *Condition) SubstituteChildOfOperator(hasParentFunc func(name FieldName, args interface{}) (bool, []int64)) {
+	for i, p := range c.Predicates {
+		if p.Cond != nil {
+			p.Cond.SubstituteChildOfOperator(hasParentFunc)
 		}
-		if p.operator != operator.ChildOf {
+		if p.CondOperator != operator.ChildOf {
 			continue
 		}
-		recModel := rc.model.getRelatedModelInfo(JoinFieldNames(p.exprs, ExprSep))
-		if !recModel.hasParentField() {
+		hasParent, parentIds := hasParentFunc(JoinFieldNames(p.Exprs, ExprSep), p.Arg)
+		if !hasParent {
 			// If we have no parent field, then we fetch only the "parent" record
-			c.predicates[i].operator = operator.Equals
+			c.Predicates[i].CondOperator = operator.Equals
 			continue
 		}
-		var parentIds []int64
-		rc.Env().Cr().Select(&parentIds, adapter.childrenIdsQuery(recModel.tableName), p.arg)
-		c.predicates[i].operator = operator.In
-		c.predicates[i].arg = parentIds
+		c.Predicates[i].CondOperator = operator.In
+		c.Predicates[i].Arg = parentIds
 	}
 }
-
-// A ClientEvaluatedString is a string that contains code that will be evaluated by the client
-type ClientEvaluatedString string

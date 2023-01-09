@@ -54,6 +54,13 @@ type UserModel struct {
 	Education     string `hexya:"display_name=Educational Background"`
 }
 
+func (UserModel) TableName() string {
+	return "user"
+}
+func (UserModel) ModelName() string {
+	return "user"
+}
+
 type ProfileModel struct {
 	Age      int16
 	Gender   string `hexya:"type=selection;options=male:Male,female:Female"`

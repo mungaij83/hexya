@@ -38,7 +38,9 @@ type TestModel3 struct {
 	Gender       GenderEnum `json:"gender" hexya:"type=selection;display_name=Gender;translate"`
 	CreateOn     time.Time  `json:"create_on" hexya:"display_name=Create On"`
 	Model2Id     int64
-	Model2       TestModel2 `hexya:"on2many=Model2Id" gorm:"foreignKey=Model2Id"`
+	Model2       TestModel2 `hexya:"one2many=Model2Id" gorm:"foreignKey=Model2Id"`
+	ModelId      int64
+	Model        *TestModel `hexya:"one2many=ModelId" gorm:"foreignKey=ModelId"`
 	ProductCount int64      `json:"product_count" hexya:"display_name=# Products;help=The number of products under this category (Does not consider the children categories)"`
 }
 
@@ -66,8 +68,16 @@ func TestModelLoader_LoadBaseModel(t *testing.T) {
 		t.Logf("Data 2: %+v", mdl)
 		mdl, err = mLoader.LoadBaseModel(TestModel3{})
 		So(err, ShouldBeNil)
+		f, ok := mdl.Fields().Get("Model2")
+		So(ok, ShouldBeTrue)
+		So(len(f.ReverseFK) > 0, ShouldBeTrue)
+		f, ok = mdl.Fields().Get("Model")
+		So(ok, ShouldBeTrue)
+		So(len(f.ReverseFK) > 0, ShouldBeTrue)
+
+		So(mdl.FieldName("Model2"), ShouldNotBeNil)
 		So(mdl, ShouldNotBeNil)
-		_, ok := mdl.Fields().Get("Gender")
+		_, ok = mdl.Fields().Get("Gender")
 		So(ok, ShouldBeTrue)
 	})
 }

@@ -99,12 +99,12 @@ func (mc *modelCollection) add(mi Repository[any, int64]) error {
 		return err
 	}
 	// Initialize table
-	if _, exists := mc.Get(mi.TableName()); exists {
+	if _, exists := mc.Get(mi.ModelName()); exists {
 		log.Warn("Trying to add already existing model", "model", mi.TableName())
 		return errors.New(fmt.Sprintf("trying to initialize an existing model: %v", mi.TableName()))
 	}
 	// Register model
-	mc.registryByTableName[mi.TableName()] = mi
+	mc.registryByTableName[mi.ModelName()] = mi
 	return nil
 }
 

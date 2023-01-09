@@ -4,6 +4,7 @@
 package loader
 
 import (
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"reflect"
 
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
@@ -73,8 +74,8 @@ func CreateFieldFromStruct(fc *FieldsCollection, fStruct interface{}, name strin
 		if contexts == nil {
 			contexts = make(FieldContexts)
 		}
-		contexts["lang"] = func(rs RecordSet) string {
-			res := rs.Env().Context().GetString("lang")
+		contexts["lang"] = func(rs conditions.RecordSet) string {
+			res := rs.Env().(Environment).Context().GetString("lang")
 			return res
 		}
 	}
@@ -91,9 +92,9 @@ func CreateFieldFromStruct(fc *FieldsCollection, fStruct interface{}, name strin
 		stored:          val.FieldByName("Stored").Bool(),
 		required:        val.FieldByName("Required").Bool(),
 		readOnly:        val.FieldByName("ReadOnly").Bool(),
-		readOnlyFunc:    val.FieldByName("ReadOnlyFunc").Interface().(func(Environment) (bool, Conditioner)),
-		requiredFunc:    val.FieldByName("RequiredFunc").Interface().(func(Environment) (bool, Conditioner)),
-		invisibleFunc:   val.FieldByName("InvisibleFunc").Interface().(func(Environment) (bool, Conditioner)),
+		readOnlyFunc:    val.FieldByName("ReadOnlyFunc").Interface().(func(Environment) (bool, conditions.Conditioner)),
+		requiredFunc:    val.FieldByName("RequiredFunc").Interface().(func(Environment) (bool, conditions.Conditioner)),
+		invisibleFunc:   val.FieldByName("InvisibleFunc").Interface().(func(Environment) (bool, conditions.Conditioner)),
 		unique:          unique,
 		index:           val.FieldByName("Index").Bool(),
 		Compute:         compute,
@@ -178,11 +179,11 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "readOnly":
 		f.readOnly = value.(bool)
 	case "requiredFunc":
-		f.requiredFunc = value.(func(Environment) (bool, Conditioner))
+		f.requiredFunc = value.(func(Environment) (bool, conditions.Conditioner))
 	case "readOnlyFunc":
-		f.readOnlyFunc = value.(func(Environment) (bool, Conditioner))
+		f.readOnlyFunc = value.(func(Environment) (bool, conditions.Conditioner))
 	case "invisibleFunc":
-		f.invisibleFunc = value.(func(Environment) (bool, Conditioner))
+		f.invisibleFunc = value.(func(Environment) (bool, conditions.Conditioner))
 	case "unique":
 		f.unique = value.(bool)
 	case "index":
@@ -222,7 +223,7 @@ func (f *Field) SetProperty(property string, value interface{}) {
 	case "inverse":
 		f.Inverse = value.(string)
 	case "filter":
-		f.filter = value.(*Condition)
+		f.filter = value.(*conditions.Condition)
 	case "relationModel":
 		f.RelatedModelName = value.(*Model).TableName()
 	case "m2mRelModel":
@@ -239,8 +240,8 @@ func (f *Field) SetProperty(property string, value interface{}) {
 			if f.contexts == nil {
 				f.contexts = make(FieldContexts)
 			}
-			f.contexts["lang"] = func(rs RecordSet) string {
-				res := rs.Env().Context().GetString("lang")
+			f.contexts["lang"] = func(rs conditions.RecordSet) string {
+				res := rs.Env().(Environment).Context().GetString("lang")
 				return res
 			}
 		case false:
@@ -329,19 +330,19 @@ func (f *Field) SetReadOnly(value bool) *Field {
 }
 
 // SetReadOnlyFunc overrides the value of the ReadOnlyFunc parameter of this Field
-func (f *Field) SetReadOnlyFunc(value func(Environment) (bool, Conditioner)) *Field {
+func (f *Field) SetReadOnlyFunc(value func(Environment) (bool, conditions.Conditioner)) *Field {
 	f.addUpdate("readOnlyFunc", value)
 	return f
 }
 
 // SetRequiredFunc overrides the value of the RequiredFunc parameter of this Field
-func (f *Field) SetRequiredFunc(value func(Environment) (bool, Conditioner)) *Field {
+func (f *Field) SetRequiredFunc(value func(Environment) (bool, conditions.Conditioner)) *Field {
 	f.addUpdate("requiredFunc", value)
 	return f
 }
 
 // SetInvisibleFunc overrides the value of the InvisibleFunc parameter of this Field
-func (f *Field) SetInvisibleFunc(value func(Environment) (bool, Conditioner)) *Field {
+func (f *Field) SetInvisibleFunc(value func(Environment) (bool, conditions.Conditioner)) *Field {
 	f.addUpdate("invisibleFunc", value)
 	return f
 }
@@ -470,7 +471,7 @@ func (f *Field) SetInverse(value Methoder) *Field {
 }
 
 // SetFilter overrides the value of the Filter parameter of this Field
-func (f *Field) SetFilter(value Conditioner) *Field {
+func (f *Field) SetFilter(value conditions.Conditioner) *Field {
 	f.addUpdate("filter", value.Underlying())
 	return f
 }

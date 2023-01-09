@@ -16,6 +16,7 @@ package loader
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"reflect"
 	"time"
 
@@ -55,7 +56,7 @@ func (rc *RecordCollection) CallMulti(methName string, args ...interface{}) []in
 		}
 	}
 
-	newEnv := rc.Env()
+	newEnv := rc.Env().(Environment)
 	newEnv.super = false
 	rSet := rc.WithEnv(newEnv)
 	rSet.env.currentLayer = methLayer
@@ -66,12 +67,12 @@ func (rc *RecordCollection) CallMulti(methName string, args ...interface{}) []in
 	res := rSet.callMulti(methLayer, args...)
 	for i, r := range res {
 		switch r.(type) {
-		case RecordSet:
+		case conditions.RecordSet:
 			// Reset the current layer and previous method to this method context and not the called one.
-			res[i].(RecordSet).Collection().env.currentLayer = rc.env.currentLayer
-			res[i].(RecordSet).Collection().env.previousMethod = rc.env.previousMethod
-			if res[i].(RecordSet).Collection().env.recursions > 0 {
-				res[i].(RecordSet).Collection().env.recursions -= 1
+			res[i].(conditions.RecordSet).Collection().(*RecordCollection).env.currentLayer = rc.env.currentLayer
+			res[i].(conditions.RecordSet).Collection().(*RecordCollection).env.previousMethod = rc.env.previousMethod
+			if res[i].(conditions.RecordSet).Collection().(*RecordCollection).env.recursions > 0 {
+				res[i].(conditions.RecordSet).Collection().(*RecordCollection).env.recursions -= 1
 			}
 		}
 	}
@@ -95,7 +96,7 @@ func (rc *RecordCollection) CallMulti(methName string, args ...interface{}) []in
 // if the current method has been called from a layer of the other method. Otherwise,
 // it will be the same as calling the other method directly.
 func (rc *RecordCollection) Super() *RecordCollection {
-	newEnv := rc.Env()
+	newEnv := rc.Env().(Environment)
 	newEnv.super = true
 	return rc.WithEnv(newEnv)
 }

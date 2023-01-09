@@ -24,6 +24,9 @@ type TagData struct {
 	Many2One  string
 	Many2Many string
 	One2Many  string
+	One2One   string
+	ReverseFK string
+	Related   string
 	Value     interface{}
 	JSON      string
 	Required  bool
@@ -49,6 +52,10 @@ type ModelLoader struct {
 
 func (ml ModelLoader) detectTableName(data interface{}) string {
 	fieldTypes := reflect.TypeOf(data)
+	if fieldTypes.Kind() == reflect.Ptr {
+		fieldTypes = fieldTypes.Elem()
+	}
+	log.Debug("Model name:", "modelName", fieldTypes.Name())
 	tableName := ""
 	if strings.HasSuffix(fieldTypes.Name(), "MixinModel") {
 		tableName = strings.TrimSuffix(fieldTypes.Name(), "MixinModel")
@@ -59,6 +66,16 @@ func (ml ModelLoader) detectTableName(data interface{}) string {
 	} else {
 		tableName = strings.TrimSuffix(fieldTypes.Name(), "Model")
 	}
+	// Override with name in the model
+	mdl, ok := data.(NamedModel)
+	if ok {
+		tmpName := mdl.ModelName()
+		if len(tmpName) > 0 {
+			log.Debug("Override table name:", "derived", tableName, "userDefined", tmpName)
+			tableName = tmpName
+		}
+	}
+	log.Debug("Table name:", "tableName", tableName)
 	return tableName
 }
 func (ml ModelLoader) detectTableType(data interface{}) (string, tools.Option) {
@@ -90,20 +107,20 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	tableName, option := ml.detectTableType(data)
+	modelName, option := ml.detectTableType(data)
 	var mdl *loader.Model
 	switch option {
 	case tools.MixinModel:
-		mdl = NewMixinModel(tableName)
+		mdl = NewMixinModel(modelName)
 		break
 	case tools.ManualModel:
-		mdl = NewManualModel(tableName)
+		mdl = NewManualModel(modelName)
 		break
 	case tools.TransientModel:
-		mdl = NewTransientModel(tableName)
+		mdl = NewTransientModel(modelName)
 		break
 	default:
-		mdl = NewModel(tableName)
+		mdl = NewModel(modelName)
 		break
 	}
 	if mdl == nil {
@@ -131,20 +148,53 @@ func (ml ModelLoader) LoadModel(data interface{}) (map[string]loader.FieldDefini
 	log.Info("Number of fields:", "fields", fieldTypes.NumField())
 	for i := 0; i < fieldTypes.NumField(); i++ {
 		f := fieldTypes.Field(i)
-		log.Info("Field: %v -> %v", f.Name, f.Type.Name())
+		log.Info("Load Field: ", "name", f.Name, "type", f.Type.Name())
 		// Load field methods
-		ferr := ml.LoadAndDetectEmbeddedFields(f, modelFields, data)
+		// Parse relationships
+		ferr := ml.ParseRelatedFields(f, modelFields, ml.GetFieldTags(f))
 		if ferr != nil {
-			log.Warn("Ignoring unknown field type:", "FieldError", ferr.Error())
+			log.Debug("Failed to parse relationship field", "field", f.Name, "error", ferr.Error())
+		} else {
+			// Relationship field found
+			continue
+		}
+		log.Debug("Parse field", "name", f.Name, "type", f.Type.Name())
+		// Not relationship field, pass primitives and other field types
+		ferr = ml.LoadAndDetectEmbeddedFields(f, modelFields, data)
+		if ferr != nil {
+			log.Warn("Error parsing field type:", "field", f.Name, "FieldError", ferr.Error())
 		}
 	}
 	return modelFields, nil
 }
+func (ml ModelLoader) IsPrimitiveType(f reflect.StructField) bool {
+	modelKind := f.Type.Kind()
+	switch modelKind {
+	case reflect.Bool:
+		return true
+	case reflect.Float32, reflect.Float64,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true
+	case reflect.String:
+		return true
+	}
+	// Byte Array
+	if (modelKind == reflect.Slice || modelKind == reflect.Array) &&
+		f.Type.Elem().Kind() == reflect.Uint8 {
+		return true
+	}
 
+	if len(f.Type.Name()) == 0 {
+		return false
+	}
+
+	return strings.Contains("time.Time time.Duration json.Number", f.Type.Name())
+}
 func (ml ModelLoader) LoadAndDetectEmbeddedFields(f reflect.StructField, fields map[string]loader.FieldDefinition, data interface{}) error {
 	var err error
-	// Load a base field
-	if f.Type.Kind() != reflect.Struct || f.Type.Name() == "Time" {
+	// Load a primitive field type
+	if ml.IsPrimitiveType(f) {
 		k, v, ferr := ml.GetFieldDetails(f, &data)
 		if ferr != nil {
 			if v == nil {
@@ -156,7 +206,7 @@ func (ml ModelLoader) LoadAndDetectEmbeddedFields(f reflect.StructField, fields 
 		fields[k] = v
 		return nil
 	}
-
+	// Interface implementing EnumWrapper and Stringer interface is considered a string
 	enumWrapper := reflect.TypeOf((*loader.EnumWrapper)(nil)).Elem()
 	if f.Type.Implements(enumWrapper) {
 		log.Debug("Loading enum field: ", "type", f.Type.Name(), "kind", f.Type.Kind())
@@ -167,28 +217,29 @@ func (ml ModelLoader) LoadAndDetectEmbeddedFields(f reflect.StructField, fields 
 		fields[k] = v
 		return nil
 	}
-
-	// Parse an embedded struct
-	log.Debug("Parsing embedded struct", "type", f.Type.Name(), "name", f.Name)
-	ff := f.Type
-	for i := 0; i < ff.NumField(); i++ {
-		f := ff.Field(i)
-		log.Info("Field: %v -> %v", f.Name, f.Type.Name())
-		if f.Type.Kind() == reflect.Struct {
-			err = ml.LoadAndDetectEmbeddedFields(f, fields, data)
-			if err != nil {
-				log.Warn("Ignoring unknown field type:", "EmbeddedStruct", err)
+	// Check and parse an embedded struct
+	if f.Type.Kind() == reflect.Struct && f.Anonymous {
+		log.Debug("Parsing embedded struct", "type", f.Type.Name(), "name", f.Name)
+		ff := f.Type
+		for i := 0; i < ff.NumField(); i++ {
+			f := ff.Field(i)
+			log.Info("Field: %v -> %v", f.Name, f.Type.Name())
+			if f.Type.Kind() == reflect.Struct {
+				err = ml.LoadAndDetectEmbeddedFields(f, fields, data)
+				if err != nil {
+					log.Warn("Ignoring unknown field type:", "EmbeddedStruct", err)
+				}
 			}
-		}
-		k, v, ferr := ml.GetFieldDetails(f, &data)
-		if ferr != nil {
-			if v == nil {
-				log.Warn("Ignoring unknown field type:", "FieldError", ferr.Error())
-			} else {
-				return ferr
+			k, v, ferr := ml.GetFieldDetails(f, &data)
+			if ferr != nil {
+				if v == nil {
+					log.Warn("Ignoring unknown field type:", "FieldError", ferr.Error())
+				} else {
+					return ferr
+				}
 			}
+			fields[k] = v
 		}
-		fields[k] = v
 	}
 
 	return nil
@@ -215,43 +266,75 @@ func (ml ModelLoader) GetFieldOptions(name string, data interface{}) map[string]
 	return map[string]string{}
 }
 
-func (ml ModelLoader) ParseRelatedFields(f reflect.StructField, data TagData) (string, loader.FieldDefinition, error) {
-	if len(data.Many2One) > 0 {
+func (ml ModelLoader) ParseRelatedFields(f reflect.StructField, fieldMap map[string]loader.FieldDefinition, data TagData) error {
+	if len(data.One2Many) > 0 {
+		tableName := ml.detectTableName(reflect.New(f.Type))
 		ff := fields.One2Many{
-			ReverseFK: data.Many2One,
+			Required:  data.Required,
+			JSON:      data.JSON,
+			ModelName: tableName,
+			Related:   data.Related,
+			String:    data.Message,
+			ReverseFK: data.One2Many,
+			Stored:    data.Stored,
+			ReadOnly:  data.ReadOnly,
+			Index:     data.Index,
+			Depends:   data.Depends,
+		}
+		fieldMap[f.Name] = ff
+		return nil
+	} else if len(data.Many2Many) > 0 {
+		tableName := ml.detectTableName(reflect.New(f.Type))
+		ff := fields.Many2Many{
+			JSON:          data.JSON,
+			Required:      data.Required,
+			String:        data.Message,
+			Related:       data.Related,
+			ModelName:     tableName,
+			M2MTheirField: data.Many2One,
+			M2MOurField:   data.ReverseFK,
+			Stored:        data.Stored,
+			ReadOnly:      data.Stored,
+			Index:         data.Index,
+			Depends:       data.Depends,
+		}
+		fieldMap[f.Name] = ff
+		return nil
+	} else if len(data.Many2One) > 0 {
+		tableName := ml.detectTableName(reflect.New(f.Type))
+		ff := fields.Many2One{
+			JSON:      data.JSON,
+			Required:  data.Required,
+			String:    data.Message,
+			Related:   data.Related,
+			ModelName: tableName,
 			Stored:    data.Stored,
 			ReadOnly:  data.Stored,
 			Index:     data.Index,
+			Depends:   data.Depends,
 		}
-		return f.Name, ff, nil
-	} else if len(data.Many2Many) > 0 {
-		ff := fields.Many2Many{
-			M2MOurField: data.Many2One,
-			Stored:      data.Stored,
-			ReadOnly:    data.Stored,
-			Index:       data.Index,
+		fieldMap[f.Name] = ff
+		return nil
+	} else if len(data.One2One) > 0 {
+		tableName := ml.detectTableName(reflect.New(f.Type))
+		ff := fields.One2One{
+			JSON:      data.JSON,
+			Required:  data.Required,
+			String:    data.Message,
+			ModelName: tableName,
+			Related:   data.Related,
+			Stored:    data.Stored,
+			ReadOnly:  data.Stored,
+			Index:     data.Index,
+			Depends:   data.Depends,
 		}
-		return f.Name, ff, nil
-	} else if len(data.Many2One) > 0 {
-		ff := fields.Many2One{
-			Related:  data.Many2One,
-			Stored:   data.Stored,
-			ReadOnly: data.Stored,
-			Index:    data.Index,
-		}
-		return f.Name, ff, nil
+		fieldMap[f.Name] = ff
+		return nil
 	}
-	return f.Name, nil, errors.New(fmt.Sprintf("unknown relation field type: %v", data.Type))
+	return errors.New(fmt.Sprintf("unknown relation field type: %v <> %v <> %v<>%v", data.Many2Many, data.Many2One, data.One2Many, data.One2One))
 }
 func (ml ModelLoader) GetFieldDetails(f reflect.StructField, modelData interface{}) (string, loader.FieldDefinition, error) {
 	data := ml.GetFieldTags(f)
-	// Parse relationship first
-	fname, rval, err := ml.ParseRelatedFields(f, data)
-	if err == nil && rval != nil {
-		return fname, rval, nil
-	} else {
-		log.Debug("Non relationship field: ", "error", err)
-	}
 	// Parse other fields
 	switch f.Type.Name() {
 	case "float64", "float32":
@@ -572,6 +655,8 @@ func (ml ModelLoader) GetFieldTags(f reflect.StructField) TagData {
 		vl.One2Many = ml.GetStringTag(tagMap, "one2many", "")
 		vl.Many2One = ml.GetStringTag(tagMap, "many2one", "")
 		vl.Many2Many = ml.GetStringTag(tagMap, "many2many", "")
+		vl.One2One = ml.GetStringTag(tagMap, "one2one", "")
+		vl.ReverseFK = ml.GetStringTag(tagMap, "ReverseFK", "")
 	}
 	return vl
 }

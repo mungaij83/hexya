@@ -16,6 +16,7 @@ package testllmodule
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"log"
 
@@ -74,24 +75,24 @@ func declareModels() {
 		})
 
 	user.NewMethod("OnChangeName",
-		func(rc *loader.RecordCollection) *loader.ModelData {
+		func(rc *loader.RecordCollection) *conditions.ModelData {
 			res := make(loader.FieldMap)
 			res["DecoratedName"] = rc.Call("PrefixedUser", "User").([]string)[0]
-			return loader.NewModelDataFromRS(rc, res)
+			return conditions.NewModelDataFromRS(rc, res)
 		})
 
 	user.NewMethod("ComputeDecoratedName",
-		func(rc *loader.RecordCollection) *loader.ModelData {
+		func(rc *loader.RecordCollection) *conditions.ModelData {
 			res := make(loader.FieldMap)
 			res["DecoratedName"] = rc.Call("PrefixedUser", "User").([]string)[0]
-			return loader.NewModelDataFromRS(rc, res)
+			return conditions.NewModelDataFromRS(rc, res)
 		})
 
 	user.NewMethod("ComputeAge",
-		func(rc *loader.RecordCollection) *loader.ModelData {
+		func(rc *loader.RecordCollection) *conditions.ModelData {
 			res := make(loader.FieldMap)
 			res["Age"] = rc.Get(rc.Model().FieldName("Profile")).(*loader.RecordCollection).Get(rc.Model().FieldName("Age")).(int16)
-			return loader.NewModelDataFromRS(rc, res)
+			return conditions.NewModelDataFromRS(rc, res)
 		})
 
 	user.NewMethod("InverseSetAge",
@@ -138,8 +139,8 @@ func declareModels() {
 		})
 
 	post.Methods().MustGet("Create").Extend(
-		func(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
-			res := rc.Super().Call("Create", data).(loader.RecordSet).Collection()
+		func(rc *loader.RecordCollection, data conditions.RecordData) *loader.RecordCollection {
+			res := rc.Super().Call("Create", data).(conditions.RecordSet).Collection()
 			return res
 		})
 
@@ -214,7 +215,7 @@ func declareModels() {
 	})
 
 	post.Methods().MustGet("Create").Extend(
-		func(rc *loader.RecordCollection, data loader.RecordData) *loader.RecordCollection {
+		func(rc *loader.RecordCollection, data conditions.RecordData) *loader.RecordCollection {
 			res := rc.Super().Call("Create", data).(*loader.RecordCollection)
 			return res
 		})

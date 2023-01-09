@@ -15,6 +15,7 @@
 package loader
 
 import (
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"reflect"
 	"sync"
 
@@ -313,12 +314,12 @@ func wrapFunctionForMethodLayer(fnctVal reflect.Value) reflect.Value {
 func convertFunctionArg(fnctArgType reflect.Type, arg interface{}) reflect.Value {
 	var val reflect.Value
 	switch at := arg.(type) {
-	case Conditioner:
+	case conditions.Conditioner:
 		if fnctArgType.Kind() == reflect.Interface {
 			// Target is a Conditioner nothing to change
 			return reflect.ValueOf(at)
 		}
-		if fnctArgType == reflect.TypeOf(new(Condition)) {
+		if fnctArgType == reflect.TypeOf(new(conditions.Condition)) {
 			// Target is a pointer to an untyped Condition
 			return reflect.ValueOf(at.Underlying())
 		}
@@ -343,14 +344,14 @@ func convertFunctionArg(fnctArgType reflect.Type, arg interface{}) reflect.Value
 		}
 		// Given arg is already a typed ModelData
 		return reflect.ValueOf(arg)
-	case RecordSet:
-		if fnctArgType == reflect.TypeOf((*RecordSet)(nil)).Elem() {
+	case conditions.RecordSet:
+		if fnctArgType == reflect.TypeOf((*conditions.RecordSet)(nil)).Elem() {
 			return reflect.ValueOf(at)
 		}
 		if fnctArgType == reflect.TypeOf(new(RecordCollection)) {
 			return reflect.ValueOf(at.Collection())
 		}
-		return reflect.ValueOf(at.Collection().Wrap())
+		return reflect.ValueOf(at.Collection().(*RecordCollection).Wrap())
 	case nil:
 		return reflect.Zero(fnctArgType)
 	default:
@@ -482,10 +483,10 @@ func checkTypesMatch(type1, type2 reflect.Type) bool {
 	if type1 == type2 {
 		return true
 	}
-	if type1 == reflect.TypeOf(new(RecordCollection)) && type2.Implements(reflect.TypeOf((*RecordSet)(nil)).Elem()) {
+	if type1 == reflect.TypeOf(new(RecordCollection)) && type2.Implements(reflect.TypeOf((*conditions.RecordSet)(nil)).Elem()) {
 		return true
 	}
-	if type2 == reflect.TypeOf(new(RecordCollection)) && type1.Implements(reflect.TypeOf((*RecordSet)(nil)).Elem()) {
+	if type2 == reflect.TypeOf(new(RecordCollection)) && type1.Implements(reflect.TypeOf((*conditions.RecordSet)(nil)).Elem()) {
 		return true
 	}
 	if type1 == reflect.TypeOf(FieldMap{}) && type2.Implements(reflect.TypeOf((*FieldMapper)(nil)).Elem()) {
@@ -529,7 +530,7 @@ func (m *Method) checkMethodAndFnctType(fnct interface{}) {
 		log.Panic("fnct parameter must be a function", "model", m.name, "method", m.name, "fnct", fnct)
 	}
 	funcType := val.Type()
-	if funcType.NumIn() == 0 || !funcType.In(0).Implements(reflect.TypeOf((*RecordSet)(nil)).Elem()) {
+	if funcType.NumIn() == 0 || !funcType.In(0).Implements(reflect.TypeOf((*conditions.RecordSet)(nil)).Elem()) {
 		log.Panic("Function must have a `RecordSet` as first argument to be used as method.",
 			"model", m.model.name, "method", m.name, "type", funcType.In(0))
 	}

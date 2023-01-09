@@ -3,7 +3,10 @@
 
 package models
 
-import "github.com/hexya-erp/hexya/src/models/loader"
+import (
+	"github.com/hexya-erp/hexya/src/models/conditions"
+	"github.com/hexya-erp/hexya/src/models/loader"
+)
 
 // ------- MODEL ---------
 
@@ -17,7 +20,7 @@ type ModelDefinition[M any] struct {
 }
 
 // NewSet returns a new CompanySet instance in the given Environment
-func (md ModelDefinition[M]) NewSet(env loader.Environment) loader.RecordSet {
+func (md ModelDefinition[M]) NewSet(env loader.Environment) conditions.RecordSet {
 	return env.Pool(md.Name())
 }
 func (md ModelDefinition[M]) Create(env loader.Environment, data *loader.ModelData) *loader.RecordCollection {
@@ -43,7 +46,7 @@ func (md ModelDefinition[M]) CreateModel(env loader.Environment, data *loader.Mo
 
 // Search searches the database and returns a new CompanySet instance
 // with the records found.
-func (md ModelDefinition[M]) Search(env loader.Environment, cond loader.Conditioner) *loader.RecordCollection {
+func (md ModelDefinition[M]) Search(env loader.Environment, cond conditions.Conditioner) *loader.RecordCollection {
 	return md.Model.Search(env, cond)
 }
 
@@ -91,10 +94,10 @@ func (md ModelDefinition[M]) Underlying() *loader.Model {
 
 // Coalesce takes a list of CompanySet and return the first non-empty one
 // if every record set is empty, it will return the last given
-func (md ModelDefinition[M]) Coalesce(lst ...loader.RecordSet) *loader.RecordSet {
-	var last loader.RecordSet
+func (md ModelDefinition[M]) Coalesce(lst ...conditions.RecordSet) *conditions.RecordSet {
+	var last conditions.RecordSet
 	for _, elem := range lst {
-		if elem.Collection().IsNotEmpty() {
+		if elem.Collection().(*loader.RecordCollection).IsNotEmpty() {
 			return &elem
 		}
 		last = elem

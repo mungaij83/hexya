@@ -16,6 +16,7 @@ package loader
 
 import (
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/tools/strutils"
 )
@@ -27,8 +28,8 @@ import (
 // corresponding original fields if they exist.
 //
 // This method removes duplicates and change all field names to their json names.
-func (rc *RecordCollection) substituteRelatedFields(fields []FieldName) ([]FieldName, map[string]string) {
-	resFields := make([]FieldName, len(fields))
+func (rc *RecordCollection) substituteRelatedFields(fields []conditions.FieldName) ([]conditions.FieldName, map[string]string) {
+	resFields := make([]conditions.FieldName, len(fields))
 	resSubsts := make(map[string]string)
 	for i, field := range fields {
 		relPath := rc.substituteRelatedInPath(field)
@@ -45,20 +46,20 @@ func (rc *RecordCollection) substituteRelatedFields(fields []FieldName) ([]Field
 // [User User.Address User.address.country Note Partner Partner.Age]
 //
 // This method removes duplicates
-func (rc *RecordCollection) addIntermediatePaths(fields []FieldName) []FieldName {
+func (rc *RecordCollection) addIntermediatePaths(fields []conditions.FieldName) []conditions.FieldName {
 	// Create a keys map with our fields to avoid duplicates
-	keys := make(map[FieldName]bool)
+	keys := make(map[conditions.FieldName]bool)
 	// Add intermediate records to our map
 	for _, field := range fields {
 		keys[field] = true
-		exprs := SplitFieldNames(field, ExprSep)
+		exprs := conditions.SplitFieldNames(field, conditions.ExprSep)
 		if len(exprs) == 1 {
 			continue
 		}
-		var curPath FieldName
+		var curPath conditions.FieldName
 		for _, expr := range exprs {
 			if curPath != nil {
-				curPath = JoinFieldNames(append([]FieldName{curPath}, expr), ExprSep)
+				curPath = conditions.JoinFieldNames(append([]conditions.FieldName{curPath}, expr), conditions.ExprSep)
 			} else {
 				curPath = expr
 			}
@@ -66,7 +67,7 @@ func (rc *RecordCollection) addIntermediatePaths(fields []FieldName) []FieldName
 		}
 	}
 	// Extract keys from our map to res
-	res := make([]FieldName, len(keys))
+	res := make([]conditions.FieldName, len(keys))
 	var i int
 	for key := range keys {
 		res[i] = key
@@ -93,28 +94,28 @@ func (rc *RecordCollection) substituteRelatedFieldsInMap(fMap FieldMap) FieldMap
 // substituted in the query.
 func (rc *RecordCollection) substituteRelatedInQuery() *RecordCollection {
 	// Substitute in RecordCollection query
-	substs := make(map[FieldName][]FieldName)
+	substs := make(map[conditions.FieldName][]conditions.FieldName)
 	queryExprs := rc.query.getAllExpressions()
 	for _, exprs := range queryExprs {
 		if len(exprs) == 0 {
 			continue
 		}
-		var curPath FieldName
-		var resExprs []FieldName
+		var curPath conditions.FieldName
+		var resExprs []conditions.FieldName
 		for _, expr := range exprs {
 			resExprs = append(resExprs, expr)
-			curPath = JoinFieldNames(resExprs, ExprSep)
+			curPath = conditions.JoinFieldNames(resExprs, conditions.ExprSep)
 			fi := rc.model.GetRelatedFieldInfo(curPath)
 			curFI := fi
 			for curFI.isRelatedField() {
 				// We loop because target field may be related itself
 				reLen := len(resExprs)
 				jsonPath := curFI.relatedPath
-				resExprs = append(resExprs[:reLen-1], SplitFieldNames(jsonPath, ExprSep)...)
-				curFI = rc.model.GetRelatedFieldInfo(JoinFieldNames(resExprs, ExprSep))
+				resExprs = append(resExprs[:reLen-1], conditions.SplitFieldNames(jsonPath, conditions.ExprSep)...)
+				curFI = rc.model.GetRelatedFieldInfo(conditions.JoinFieldNames(resExprs, conditions.ExprSep))
 			}
 		}
-		substs[JoinFieldNames(exprs, ExprSep)] = resExprs
+		substs[conditions.JoinFieldNames(exprs, conditions.ExprSep)] = resExprs
 	}
 	rc.query.substituteConditionExprs(substs)
 
@@ -123,49 +124,49 @@ func (rc *RecordCollection) substituteRelatedInQuery() *RecordCollection {
 
 // substituteRelatedInPath recursively substitutes path for its related value.
 // If path is not a related field, it is returned as is.
-func (rc *RecordCollection) substituteRelatedInPath(path FieldName) FieldName {
-	exprs := SplitFieldNames(path, ExprSep)
+func (rc *RecordCollection) substituteRelatedInPath(path conditions.FieldName) conditions.FieldName {
+	exprs := conditions.SplitFieldNames(path, conditions.ExprSep)
 	prefix := exprs[0]
 	fi := rc.model.GetRelatedFieldInfo(prefix)
 	if fi.isRelatedField() {
 		newPath := fi.relatedPath
 		if len(exprs) > 1 {
-			newPath = JoinFieldNames(append([]FieldName{newPath}, exprs[1:]...), ExprSep)
+			newPath = conditions.JoinFieldNames(append([]conditions.FieldName{newPath}, exprs[1:]...), conditions.ExprSep)
 		}
 		return rc.substituteRelatedInPath(newPath)
 	}
 	if len(exprs) == 1 {
 		return prefix
 	}
-	suffix := JoinFieldNames(exprs[1:], ExprSep)
+	suffix := conditions.JoinFieldNames(exprs[1:], conditions.ExprSep)
 	model := rc.Model().getRelatedModelInfo(prefix)
-	res := JoinFieldNames(append([]FieldName{prefix}, rc.Env().Pool(model.name).substituteRelatedInPath(suffix)), ExprSep)
+	res := conditions.JoinFieldNames(append([]conditions.FieldName{prefix}, rc.Env().(Environment).Pool(model.name).substituteRelatedInPath(suffix)), conditions.ExprSep)
 	return res
 }
 
 // createRelatedRecord creates Records at the given path, starting from this recordset.
 // This method does not check whether such a records already exists or not.
-func (rc *RecordCollection) createRelatedRecord(path FieldName, vals RecordData) *RecordCollection {
+func (rc *RecordCollection) createRelatedRecord(path conditions.FieldName, vals RecordData) *RecordCollection {
 	log.Debug("Creating related record", "recordset", rc, "path", path, "vals", vals)
 	rc.EnsureOne()
 	fi := rc.model.GetRelatedFieldInfo(path)
-	exprs := SplitFieldNames(path, ExprSep)
+	exprs := conditions.SplitFieldNames(path, conditions.ExprSep)
 	switch fi.FieldType {
 	case fieldtype.Many2One, fieldtype.One2One, fieldtype.Many2Many:
 		resRS := rc.createRelatedFKRecord(fi, vals)
 		rc.Set(path, resRS.Collection())
-		return resRS.Collection()
+		return resRS.Collection().(*RecordCollection)
 	case fieldtype.One2Many, fieldtype.Rev2One:
 		target := rc
 		if len(exprs) > 1 {
-			target = rc.Get(JoinFieldNames(exprs[:len(exprs)-1], ExprSep)).(RecordSet).Collection()
+			target = rc.Get(conditions.JoinFieldNames(exprs[:len(exprs)-1], conditions.ExprSep)).(conditions.RecordSet).Collection().(*RecordCollection)
 			if target.IsEmpty() {
-				log.Panic("Target record does not exist", "recordset", rc, "path", JoinFieldNames(exprs[:len(exprs)-1], ExprSep))
+				log.Panic("Target record does not exist", "recordset", rc, "path", conditions.JoinFieldNames(exprs[:len(exprs)-1], conditions.ExprSep))
 			}
 			target = target.Records()[0]
 		}
 		vals.Underlying().Set(fi.RelatedModel.FieldName(fi.ReverseFK), target)
-		return rc.env.Pool(fi.RelatedModel.name).Call("Create", vals).(RecordSet).Collection()
+		return rc.env.Pool(fi.RelatedModel.name).Call("Create", vals).(conditions.RecordSet).Collection().(*RecordCollection)
 	}
 	return rc.env.Pool(rc.ModelName())
 }
@@ -177,5 +178,5 @@ func (rc *RecordCollection) createRelatedFKRecord(fi *Field, data RecordData) *R
 		rSet = rSet.WithContext("default_hexya_external_id", fmt.Sprintf("%s_%s", rc.Get(rc.model.FieldName("HexyaExternalID")), strutils.SnakeCase(fi.RelatedModel.name)))
 	}
 	res := rSet.Call("Create", data)
-	return res.(RecordSet).Collection()
+	return res.(conditions.RecordSet).Collection().(*RecordCollection)
 }

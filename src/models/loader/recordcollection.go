@@ -17,6 +17,7 @@ package loader
 import (
 	"database/sql"
 	"fmt"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"reflect"
 	"sort"
 	"strconv"
@@ -39,6 +40,16 @@ type RecordCollection struct {
 	fetched    bool
 	filtered   bool
 	HasNegIds  bool
+}
+
+func NewRecordCollection(env *Environment, mi *Model) *RecordCollection {
+	rc := RecordCollection{
+		model: mi,
+		query: newQuery(),
+		ids:   make([]int64, 0),
+	}
+	rc.query.recordSet = &rc
+	return &rc
 }
 
 // Scan implements sql.Scanner
@@ -82,8 +93,8 @@ func (rc *RecordCollection) Scan(src interface{}) error {
 			ids[i] = int64(v)
 		}
 		rc.WithIds(ids)
-	case RecordSet:
-		*rc = *r.Collection()
+	case conditions.RecordSet:
+		*rc = *r.Collection().(*RecordCollection)
 	default:
 		return fmt.Errorf("unexpected type %T to represent Recordset: %s", src, src)
 	}
@@ -102,7 +113,7 @@ func (rc *RecordCollection) String() string {
 }
 
 // Env returns the RecordSet's Environment
-func (rc *RecordCollection) Env() Environment {
+func (rc *RecordCollection) Env() interface{} {
 	res := *rc.env
 	return res
 }
@@ -238,7 +249,7 @@ func (rc *RecordCollection) addEmbeddedfields(fMap FieldMap) FieldMap {
 		if _, ok := fMap[fi.json]; ok {
 			continue
 		}
-		fMap[fmt.Sprintf("%s%sID", fName, ExprSep)] = nil
+		fMap[fmt.Sprintf("%s%sID", fName, conditions.ExprSep)] = nil
 	}
 	return fMap
 }
@@ -289,21 +300,21 @@ func (rc *RecordCollection) GetDefaults(create bool) *ModelData {
 		if fi.defaultFunc == nil {
 			continue
 		}
-		md.Set(fName, fi.defaultFunc(rc.Env()))
+		md.Set(fName, fi.defaultFunc(rc.Env().(Environment)))
 	}
 	return md
 }
 
 // applyContexts adds filtering on contexts when applicable to this RecordSet query.
 func (rc *RecordCollection) applyContexts() *RecordCollection {
-	ctxCond := newCondition()
+	ctxCond := conditions.NewCondition()
 	var ctxOrders []orderPredicate
 	for _, fi := range rc.model.fields.registryByName {
 		if fi.contexts == nil {
 			continue
 		}
 		for ctxName, ctxFunc := range fi.contexts {
-			path := rc.model.FieldName(fmt.Sprintf("%sHexyaContexts%s%s", fi.name, ExprSep, ctxName))
+			path := rc.model.FieldName(fmt.Sprintf("%sHexyaContexts%s%s", fi.name, conditions.ExprSep, ctxName))
 			ctxOrders = append(ctxOrders, orderPredicate{field: path, desc: true})
 			cond := rc.model.Field(path).IsNull()
 			if !rc.env.context.GetBool("hexya_default_contexts") {
@@ -337,7 +348,7 @@ func (rc *RecordCollection) addContextsFieldsValues(fMap FieldMap) FieldMap {
 // in the given FieldNames.
 // Each method is only executed once, even if it is called by several fields.
 // It panics as soon as one constraint fails.
-func (rc *RecordCollection) CheckConstraints(fields FieldNames) {
+func (rc *RecordCollection) CheckConstraints(fields conditions.FieldNames) {
 	if rc.env.context.GetBool("hexya_skip_check_constraints") {
 		return
 	}
@@ -370,7 +381,7 @@ func (rc *RecordCollection) addAccessFieldsCreateData(fMap *FieldMap) {
 // This function is private and low level. It should not be called directly.
 // Instead use rs.Call("Write")
 func (rc *RecordCollection) Update(data RecordData) bool {
-	if !rc.HasNegIds && rc.ForceLoad(ID).IsEmpty() {
+	if !rc.HasNegIds && rc.ForceLoad(conditions.ID).IsEmpty() {
 		return true
 	}
 	rSet := rc.addRecordRuleConditions(rc.env.uid, security.Write)
@@ -481,8 +492,8 @@ func (rc *RecordCollection) updateRelationFields(fMap FieldMap) {
 			if rc.Len() > 1 {
 				log.Warn("Updating one2many relation on multiple record at once", "model", rc.ModelName(), "field", field)
 			}
-			curRS := rc.env.Pool(fi.RelatedModelName).Search(fi.RelatedModel.Field(ID).In(rc.Get(rc.model.FieldName(fi.name)).(RecordSet).Collection()))
-			newRS := rc.env.Pool(fi.RelatedModelName).Search(fi.RelatedModel.Field(ID).In(value.([]int64)))
+			curRS := rc.env.Pool(fi.RelatedModelName).Search(fi.RelatedModel.Field(conditions.ID).In(rc.Get(rc.model.FieldName(fi.name)).(conditions.RecordSet).Collection()))
+			newRS := rc.env.Pool(fi.RelatedModelName).Search(fi.RelatedModel.Field(conditions.ID).In(value.([]int64)))
 			// Remove ReverseFK for Records that are no longer our children
 			toRemove := curRS.Subtract(newRS)
 			if toRemove.Len() > 0 {
@@ -520,7 +531,7 @@ func (rc *RecordCollection) updateRelatedFields(fMap FieldMap) {
 
 	rc.Fetch()
 	fMap = rc.substituteRelatedFieldsInMap(fMap)
-	fields := make(FieldNames, len(fMap))
+	fields := make(conditions.FieldNames, len(fMap))
 	var i int
 	for k := range fMap {
 		fields[i] = rc.model.FieldName(k)
@@ -572,7 +583,7 @@ func (rc *RecordCollection) updateRelatedFields(fMap FieldMap) {
 			// This is a contexted field and we have no default value so we create it
 			vals, prefix := rc.relatedFieldMap(fMap, path)
 			//
-			field := strings.TrimPrefix(path.JSON(), prefix.JSON()+ExprSep)
+			field := strings.TrimPrefix(path.JSON(), prefix.JSON()+conditions.ExprSep)
 			defVals := FieldMap{
 				"record_id": vals["record_id"],
 				field:       vals[field],
@@ -594,13 +605,13 @@ func (rc *RecordCollection) updateRelatedFields(fMap FieldMap) {
 // relatively to this record collection if they are not already in cache.
 //
 // This method also loads default values for contexted fields
-func (rc *RecordCollection) loadRelatedRecords(fields []FieldName) {
-	var toLoad []FieldName
+func (rc *RecordCollection) loadRelatedRecords(fields []conditions.FieldName) {
+	var toLoad []conditions.FieldName
 
 	// load contexted fields default value
 	if rc.query.ctxArgsSlug() != "" {
 		for _, field := range fields {
-			exprs := SplitFieldNames(field, ExprSep)
+			exprs := conditions.SplitFieldNames(field, conditions.ExprSep)
 			if len(exprs) <= 1 {
 				continue
 			}
@@ -613,9 +624,9 @@ func (rc *RecordCollection) loadRelatedRecords(fields []FieldName) {
 		}
 	}
 	// Load contexted fields with rc's context
-	toLoad = []FieldName{}
+	toLoad = []conditions.FieldName{}
 	for _, field := range fields {
-		exprs := SplitFieldNames(field, ExprSep)
+		exprs := conditions.SplitFieldNames(field, conditions.ExprSep)
 		if len(exprs) <= 1 {
 			continue
 		}
@@ -634,14 +645,14 @@ func (rc *RecordCollection) loadRelatedRecords(fields []FieldName) {
 // value is the path to the related record.
 //
 // field must be a field of the related record (and not an M2O field pointing to it)
-func (rc *RecordCollection) relatedFieldMap(fMap FieldMap, field FieldName) (FieldMap, FieldName) {
-	exprs := SplitFieldNames(field, ExprSep)
-	prefix := JoinFieldNames(exprs[:len(exprs)-1], ExprSep)
+func (rc *RecordCollection) relatedFieldMap(fMap FieldMap, field conditions.FieldName) (FieldMap, conditions.FieldName) {
+	exprs := conditions.SplitFieldNames(field, conditions.ExprSep)
+	prefix := conditions.JoinFieldNames(exprs[:len(exprs)-1], conditions.ExprSep)
 	res := make(FieldMap)
 	for f, v := range fMap {
-		fExprs := strings.Split(f, ExprSep)
-		if strings.HasPrefix(f, prefix.JSON()+ExprSep) {
-			key := strings.Join(fExprs[len(exprs)-1:], ExprSep)
+		fExprs := strings.Split(f, conditions.ExprSep)
+		if strings.HasPrefix(f, prefix.JSON()+conditions.ExprSep) {
+			key := strings.Join(fExprs[len(exprs)-1:], conditions.ExprSep)
 			res[key] = v
 		}
 	}
@@ -691,7 +702,7 @@ func (rc *RecordCollection) Unlink() int64 {
 
 // Search returns a new RecordSet filtering on the current one with the
 // additional given Condition
-func (rc *RecordCollection) Search(cond *Condition) *RecordCollection {
+func (rc *RecordCollection) Search(cond *conditions.Condition) *RecordCollection {
 	rSetVal := *rc
 	rSetVal.query = rc.query.clone(&rSetVal)
 	rSetVal.query.cond = rSetVal.query.cond.AndCond(cond)
@@ -723,10 +734,10 @@ func (rc *RecordCollection) OrderBy(exprs ...string) *RecordCollection {
 }
 
 // GroupBy returns a new RecordSet grouped with the given GROUP BY expressions
-func (rc *RecordCollection) GroupBy(fields ...FieldName) *RecordCollection {
+func (rc *RecordCollection) GroupBy(fields ...conditions.FieldName) *RecordCollection {
 	rSet := *rc
 	rSet.query = rSet.query.clone(&rSet)
-	exprs := make([]FieldName, len(fields))
+	exprs := make([]conditions.FieldName, len(fields))
 	for i, f := range fields {
 		exprs[i] = f
 	}
@@ -748,7 +759,7 @@ func (rc *RecordCollection) Fetch() *RecordCollection {
 		// Call SearchAll instead to load all the records of the table
 		return rc
 	}
-	return rc.Load(ID)
+	return rc.Load(conditions.ID)
 }
 
 // SearchAll returns a new RecordSet with all items of the table, regardless of the
@@ -775,7 +786,7 @@ func (rc *RecordCollection) SearchCount() int {
 
 // Load look up fields of the RecordCollection in cache and query the database
 // for missing values which are then stored in cache.
-func (rc *RecordCollection) Load(fields ...FieldName) *RecordCollection {
+func (rc *RecordCollection) Load(fields ...conditions.FieldName) *RecordCollection {
 	if len(fields) == 0 {
 		fields = rc.model.fields.storedFieldNames()
 	}
@@ -796,7 +807,7 @@ func (rc *RecordCollection) Load(fields ...FieldName) *RecordCollection {
 // If no fields are given, all DB columns of the RecordCollection's
 // model are retrieved as well as related fields. Non-DB fields must
 // be explicitly given in fields to be retrieved.
-func (rc *RecordCollection) ForceLoad(fieldNames ...FieldName) *RecordCollection {
+func (rc *RecordCollection) ForceLoad(fieldNames ...conditions.FieldName) *RecordCollection {
 	rc.CheckExecutionPermission(rc.model.methods.MustGet("Load"))
 	if rc.query.isEmpty() {
 		// Never load RecordSets without query.
@@ -813,12 +824,12 @@ func (rc *RecordCollection) ForceLoad(fieldNames ...FieldName) *RecordCollection
 	if !rc.prefetchRC.IsEmpty() && len(rc.ids) > 0 {
 		// We have a prefetch recordSet and our ids are already fetched
 		prefetch = true
-		rSet = rc.Union(rc.prefetchRC).WithEnv(rc.Env())
+		rSet = rc.Union(rc.prefetchRC).WithEnv(rc.Env().(Environment))
 	}
 	rSet = rSet.addRecordRuleConditions(rc.env.uid, security.Read)
 	rSet.applyDefaultOrder()
 
-	fields := make([]FieldName, len(fieldNames))
+	fields := make([]conditions.FieldName, len(fieldNames))
 	copy(fields, fieldNames)
 	if len(fields) == 0 {
 		fields = rSet.model.fields.storedFieldNames()
@@ -854,7 +865,7 @@ func (rc *RecordCollection) ForceLoad(fieldNames ...FieldName) *RecordCollection
 	rSet = rSet.WithIds(ids)
 	rSet.loadRelationFields(subFields)
 	if prefetch {
-		*rc = *rSet.Intersect(rc).WithEnv(rc.Env())
+		*rc = *rSet.Intersect(rc).WithEnv(rc.Env().(Environment))
 		return rc
 	}
 	return rSet
@@ -871,7 +882,7 @@ func (rc *RecordCollection) applyDefaultOrder() {
 // loadRelationFields loads one2many, many2many and rev2one fields from the given fields
 // names in this RecordCollection into the cache. fields of other types given in fields
 // are ignored.
-func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
+func (rc *RecordCollection) loadRelationFields(fields conditions.FieldNames) {
 	if len(fields) == 0 {
 		return
 	}
@@ -885,18 +896,18 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 				continue
 			}
 			thisRC := rec
-			exprs := SplitFieldNames(fName, ExprSep)
+			exprs := conditions.SplitFieldNames(fName, conditions.ExprSep)
 			if len(exprs) > 1 {
-				prefix := JoinFieldNames(exprs[:len(exprs)-1], ExprSep)
+				prefix := conditions.JoinFieldNames(exprs[:len(exprs)-1], conditions.ExprSep)
 				// We do not call "Load" directly to have Caller method properly set
-				thisRC.Call("Load", []FieldName{prefix})
-				thisRC = thisRC.Get(prefix).(RecordSet).Collection()
+				thisRC.Call("Load", []conditions.FieldName{prefix})
+				thisRC = thisRC.Get(prefix).(conditions.RecordSet).Collection().(*RecordCollection)
 			}
 			switch fi.FieldType {
 			case fieldtype.One2Many:
 				relRC := rc.env.Pool(fi.RelatedModelName)
 				// We do not call "Fetch" directly to have Caller method properly set
-				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.ReverseFK)).Equals(thisRC)).Call("Fetch").(RecordSet).Collection()
+				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.ReverseFK)).Equals(thisRC)).Call("Fetch").(conditions.RecordSet).Collection().(*RecordCollection)
 				rc.env.cache.updateEntry(rc.model, id, fName.JSON(), relRC.ids, rc.query.ctxArgsSlug())
 			case fieldtype.Many2Many:
 				query := fmt.Sprintf(`SELECT %s FROM %s WHERE %s = ?`, fi.m2mTheirField.json,
@@ -910,7 +921,7 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 			case fieldtype.Rev2One:
 				relRC := rc.env.Pool(fi.RelatedModelName)
 				// We do not call "Fetch" directly to have Caller method properly set
-				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.ReverseFK)).Equals(thisRC)).Call("Fetch").(RecordSet).Collection()
+				relRC = relRC.Search(relRC.Model().Field(relRC.Model().FieldName(fi.ReverseFK)).Equals(thisRC)).Call("Fetch").(conditions.RecordSet).Collection().(*RecordCollection)
 				var relID int64
 				if len(relRC.ids) > 0 {
 					relID = relRC.ids[0]
@@ -921,16 +932,16 @@ func (rc *RecordCollection) loadRelationFields(fields FieldNames) {
 	}
 }
 func (rc *RecordCollection) GetField(field string) interface{} {
-	return rc.Get(NewFieldName(field, field))
+	return rc.Get(conditions.NewFieldName(field, field))
 }
 
 // Get returns the value of the given fieldName for the first record of this RecordCollection.
 // It returns the type's zero value if the RecordCollection is empty.
-func (rc *RecordCollection) Get(fieldName FieldName) interface{} {
+func (rc *RecordCollection) Get(fieldName conditions.FieldName) interface{} {
 	fi := rc.model.GetRelatedFieldInfo(fieldName)
 	if !rc.IsValid() {
 		res := reflect.Zero(fi.structField.Type).Interface()
-		if fi.isRelationField() {
+		if fi.IsRelationField() {
 			res = rc.ConvertToRecordSet(res, fi.RelatedModelName)
 		}
 		return res
@@ -939,15 +950,15 @@ func (rc *RecordCollection) Get(fieldName FieldName) interface{} {
 	rc.Fetch()
 	var res interface{}
 
-	exprs := SplitFieldNames(fieldName, ExprSep)
+	exprs := conditions.SplitFieldNames(fieldName, conditions.ExprSep)
 	switch {
 	case rc.IsEmpty():
 		res = reflect.Zero(fi.structField.Type).Interface()
 	case fi.IsComputedField() && !fi.isStored():
-		prefix := JoinFieldNames(exprs[:len(exprs)-1], ExprSep)
+		prefix := conditions.JoinFieldNames(exprs[:len(exprs)-1], conditions.ExprSep)
 		relRC := rc
 		if prefix.Name() != "" {
-			relRC = rc.Get(prefix).(RecordSet).Collection()
+			relRC = rc.Get(prefix).(conditions.RecordSet).Collection().(*RecordCollection)
 		}
 		fMap := make(FieldMap)
 		relRC.computeFieldValues(&fMap, fi.json)
@@ -959,8 +970,8 @@ func (rc *RecordCollection) Get(fieldName FieldName) interface{} {
 			// We have a negative ID, but we fetch a related field
 			// So we delegate to the related model to prevent fetching ourselves in the DB
 			relRs := rc.Get(exprs[0])
-			if relRs.(RecordSet).IsNotEmpty() {
-				return relRs.(RecordSet).Collection().Get(JoinFieldNames(exprs[1:], ExprSep))
+			if relRs.(conditions.RecordSet).IsNotEmpty() {
+				return relRs.(conditions.RecordSet).Collection().(*RecordCollection).Get(conditions.JoinFieldNames(exprs[1:], conditions.ExprSep))
 			}
 		}
 		// If value is not in cache we fetch the whole model to speed up later calls to Get,
@@ -975,7 +986,7 @@ func (rc *RecordCollection) Get(fieldName FieldName) interface{} {
 		res = reflect.Zero(fi.structField.Type).Interface()
 	}
 
-	if fi.isRelationField() {
+	if fi.IsRelationField() {
 		res = rc.ConvertToRecordSet(res, fi.RelatedModelName)
 	}
 	return res
@@ -987,7 +998,7 @@ func (rc *RecordCollection) ConvertToRecordSet(val interface{}, relatedModelName
 	if rc.env == nil {
 		return InvalidRecordCollection(relatedModelName)
 	}
-	res := newRecordCollection(rc.Env(), relatedModelName)
+	res := newRecordCollection(rc.Env().(Environment), relatedModelName)
 	if err := res.Scan(val); err != nil {
 		log.Panic("Error while converting to RecordSet", "error", err)
 	}
@@ -999,12 +1010,12 @@ func (rc *RecordCollection) ConvertToRecordSet(val interface{}, relatedModelName
 // If all is true, all fields of the model are loaded, otherwise only field.
 //
 // Second returned value is true if a call to the DB was necessary (i.e. not in cache)
-func (rc *RecordCollection) get(field FieldName, all bool) (interface{}, bool) {
+func (rc *RecordCollection) get(field conditions.FieldName, all bool) (interface{}, bool) {
 	rc.Fetch()
 	var dbCalled bool
 	isInCache := rc.env.cache.checkIfInCache(rc.model, []int64{rc.ids[0]}, []string{field.JSON()}, rc.query.ctxArgsSlug(), true)
 	if !rc.HasNegIds && !isInCache {
-		fields := []FieldName{field}
+		fields := []conditions.FieldName{field}
 		if all {
 			fields = append(fields, rc.model.fields.storedFieldNames()...)
 		}
@@ -1021,7 +1032,7 @@ func (rc *RecordCollection) get(field FieldName, all bool) (interface{}, bool) {
 // Set sets field given by fieldName to the given value. If the RecordSet has several
 // Records, all of them will be updated. Each call to Set makes an update query in the
 // database. It panics if it is called on an empty RecordSet.
-func (rc *RecordCollection) Set(fieldName FieldName, value interface{}) {
+func (rc *RecordCollection) Set(fieldName conditions.FieldName, value interface{}) {
 	md := NewModelData(rc.model).Set(fieldName, value)
 	rc.Call("Write", md)
 }
@@ -1063,11 +1074,11 @@ func (rc *RecordCollection) All() []*ModelData {
 }
 
 // Aggregates returns the result of this RecordCollection query, which must by a grouped query.
-func (rc *RecordCollection) Aggregates(fieldNames ...FieldName) []GroupAggregateRow {
+func (rc *RecordCollection) Aggregates(fieldNames ...conditions.FieldName) []GroupAggregateRow {
 	if len(rc.query.groups) == 0 {
 		log.Panic("Trying to get aggregates of a non-grouped query", "model", rc.model)
 	}
-	groups := make([]FieldName, len(rc.query.groups))
+	groups := make([]conditions.FieldName, len(rc.query.groups))
 	copy(groups, rc.query.groups)
 
 	rSet := rc.addRecordRuleConditions(rc.env.uid, security.Read)
@@ -1103,28 +1114,28 @@ func (rc *RecordCollection) Aggregates(fieldNames ...FieldName) []GroupAggregate
 
 // fixGroupByOrders adds order by expressions to Group by clause to have a correct query.
 // It also adds a default order to the grouped fields if it does not exist.
-func (rc *RecordCollection) fixGroupByOrders(fieldNames ...FieldName) *RecordCollection {
+func (rc *RecordCollection) fixGroupByOrders(fieldNames ...conditions.FieldName) *RecordCollection {
 	rSet := rc
 	orderExprs := rc.query.getOrderByExpressions(false)
 	ctxOrderExprs := rc.query.getCtxOrderByExpressions()
 	groupExprs := rc.query.getGroupByExpressions()
-	groupFields := make(map[FieldName]bool)
-	ctxGroupFields := make(map[FieldName]bool)
+	groupFields := make(map[conditions.FieldName]bool)
+	ctxGroupFields := make(map[conditions.FieldName]bool)
 	for _, g := range groupExprs {
-		groupFields[JoinFieldNames(g, ExprSep)] = true
+		groupFields[conditions.JoinFieldNames(g, conditions.ExprSep)] = true
 	}
-	fieldsMap := make(map[FieldName]bool)
+	fieldsMap := make(map[conditions.FieldName]bool)
 	for _, f := range fieldNames {
 		fieldsMap[f] = true
 	}
 	for _, o := range orderExprs {
-		oName := JoinFieldNames(o, ExprSep)
+		oName := conditions.JoinFieldNames(o, conditions.ExprSep)
 		if !groupFields[oName] && !fieldsMap[oName] {
 			rSet = rSet.GroupBy(oName)
 		}
 	}
 	for _, o := range ctxOrderExprs {
-		oName := JoinFieldNames(o, ExprSep)
+		oName := conditions.JoinFieldNames(o, conditions.ExprSep)
 		if !ctxGroupFields[oName] && !fieldsMap[oName] {
 			rSet = rSet.clone()
 			rSet.query.ctxGroups = append(rSet.query.ctxGroups, oName)
@@ -1143,13 +1154,13 @@ func (rc *RecordCollection) fixGroupByOrders(fieldNames ...FieldName) *RecordCol
 // fieldsGroupOperators returns a map of fields to retrieve in a Group by query.
 // The first argument is the list of fields in the map.
 // The second argument is a map that has a field as key, and sql aggregate function as value.
-func (rc *RecordCollection) fieldsGroupOperators(fields []FieldName) ([]FieldName, map[string]string) {
+func (rc *RecordCollection) fieldsGroupOperators(fields []conditions.FieldName) ([]conditions.FieldName, map[string]string) {
 	groups := make(map[string]bool)
 	for _, g := range rc.query.groups {
 		groups[g.JSON()] = true
 	}
 	res := make(map[string]string)
-	var fRes []FieldName
+	var fRes []conditions.FieldName
 	for _, dbf := range fields {
 		if groups[dbf.JSON()] {
 			res[dbf.JSON()] = ""
@@ -1166,13 +1177,13 @@ func (rc *RecordCollection) fieldsGroupOperators(fields []FieldName) ([]FieldNam
 }
 
 // Condition returns the query condition associated with this RecordSet.
-func (rc *RecordCollection) Condition() *Condition {
+func (rc *RecordCollection) Condition() *conditions.Condition {
 	return rc.query.cond
 }
 
 // SQLFromCondition returns the WHERE clause sql and arguments corresponding to
 // the given condition.
-func (rc *RecordCollection) SQLFromCondition(c *Condition) (string, SQLParams) {
+func (rc *RecordCollection) SQLFromCondition(c *conditions.Condition) (string, SQLParams) {
 	return rc.query.conditionSQLClause(c)
 }
 
@@ -1181,7 +1192,7 @@ func (rc *RecordCollection) SQLFromCondition(c *Condition) (string, SQLParams) {
 func (rc *RecordCollection) Records() []*RecordCollection {
 	res := make([]*RecordCollection, rc.Len())
 	for i, id := range rc.Ids() {
-		newRC := newRecordCollection(rc.Env(), rc.ModelName())
+		newRC := newRecordCollection(rc.Env().(Environment), rc.ModelName())
 		res[i] = newRC.WithIds([]int64{id})
 		res[i].prefetchRC = rc
 	}
@@ -1274,7 +1285,7 @@ func (rc *RecordCollection) WithIds(ids []int64) *RecordCollection {
 		for _, id := range rc.ids {
 			rc.env.cache.updateEntry(rc.model, id, "id", id, rc.query.ctxArgsSlug())
 		}
-		rc.query.cond = rc.Model().Field(ID).In(newIds)
+		rc.query.cond = rc.Model().Field(conditions.ID).In(newIds)
 		rc.query.fetchAll = false
 		rc.query.limit = 0
 		rc.query.offset = 0
@@ -1291,18 +1302,18 @@ func (rc *RecordCollection) WithIds(ids []int64) *RecordCollection {
 // The translated string will be passed to fmt.Sprintf with the optional args
 // before being returned.
 func (rc *RecordCollection) T(src string, args ...interface{}) string {
-	lang := rc.Env().Context().GetString("lang")
+	lang := rc.Env().(Environment).Context().GetString("lang")
 	transCode := i18n.TranslateCode(lang, "", src)
 	return fmt.Sprintf(transCode, args...)
 }
 
 // Collection returns the underlying RecordCollection instance
 // i.e. itself
-func (rc *RecordCollection) Collection() *RecordCollection {
+func (rc *RecordCollection) Collection() interface{} {
 	return rc
 }
 
-var _ RecordSet = new(RecordCollection)
+var _ conditions.RecordSet = new(RecordCollection)
 
 // newRecordCollection returns a new empty RecordCollection in the
 // given environment for the given modelName

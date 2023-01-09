@@ -15,6 +15,7 @@
 package loader
 
 import (
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/security"
 )
 
@@ -33,7 +34,7 @@ func (rc *RecordCollection) addRecordRuleConditions(uid int64, perm security.Per
 	}
 	// Add Groups rules
 	userGroups := security.Registry.UserGroups(uid)
-	groupCondition := newCondition()
+	groupCondition := conditions.NewCondition()
 	for group := range userGroups {
 		for _, rule := range rSet.model.rulesRegistry.rulesByGroup[group.ID()] {
 			if perm&rule.Perms > 0 {

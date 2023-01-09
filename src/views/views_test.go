@@ -18,6 +18,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"encoding/xml"
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"testing"
 
@@ -229,8 +230,8 @@ func TestViews(t *testing.T) {
 		category := loader.NewModel("Category")
 		user := loader.NewModel("User")
 		partner := loader.NewModel("Partner")
-		user.NewMethod("OnChangeAge", func(rc *loader.RecordCollection) *loader.ModelData {
-			return loader.NewModelData(rc.Model())
+		user.NewMethod("OnChangeAge", func(rc *loader.RecordCollection) *conditions.ModelData {
+			return conditions.NewModelData(rc.Model())
 		})
 		group.AddFields(map[string]loader.FieldDefinition{
 			"Name":   fields.Char{},

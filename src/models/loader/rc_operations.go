@@ -4,6 +4,7 @@
 package loader
 
 import (
+	"github.com/hexya-erp/hexya/src/models/conditions"
 	"sort"
 
 	"github.com/hexya-erp/hexya/src/tools/typesutils"
@@ -12,7 +13,7 @@ import (
 // Union returns a new RecordCollection that is the union of this RecordCollection
 // and the given `other` RecordCollection. The result is guaranteed to be a
 // set of unique records. The order of the records is kept.
-func (rc *RecordCollection) Union(other RecordSet) *RecordCollection {
+func (rc *RecordCollection) Union(other conditions.RecordSet) *RecordCollection {
 	if !rc.IsValid() {
 		return rc
 	}
@@ -36,13 +37,13 @@ func (rc *RecordCollection) Union(other RecordSet) *RecordCollection {
 		delete(idMap, id)
 		i++
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
+	return newRecordCollection(rc.Env().(Environment), rc.ModelName()).WithIds(ids)
 }
 
 // Subtract returns a RecordSet with the Records that are in this
 // RecordCollection but not in the given 'other' one.
 // The result is guaranteed to be a set of unique records.
-func (rc *RecordCollection) Subtract(other RecordSet) *RecordCollection {
+func (rc *RecordCollection) Subtract(other conditions.RecordSet) *RecordCollection {
 	if !rc.IsValid() {
 		return rc
 	}
@@ -67,12 +68,12 @@ func (rc *RecordCollection) Subtract(other RecordSet) *RecordCollection {
 		ids[i] = id
 		i++
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
+	return newRecordCollection(rc.Env().(Environment), rc.ModelName()).WithIds(ids)
 }
 
 // Intersect returns a new RecordCollection with only the records that are both
 // in this RecordCollection and in the other RecordSet.
-func (rc *RecordCollection) Intersect(other RecordSet) *RecordCollection {
+func (rc *RecordCollection) Intersect(other conditions.RecordSet) *RecordCollection {
 	if !rc.IsValid() {
 		return rc
 	}
@@ -99,24 +100,24 @@ func (rc *RecordCollection) Intersect(other RecordSet) *RecordCollection {
 		ids[i] = id
 		i++
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
+	return newRecordCollection(rc.Env().(Environment), rc.ModelName()).WithIds(ids)
 }
 
 // CartesianProduct returns the cartesian product of this RecordCollection with others.
 //
 // This function panics if all records are not pf the same model
-func (rc *RecordCollection) CartesianProduct(records ...RecordSet) []*RecordCollection {
+func (rc *RecordCollection) CartesianProduct(records ...conditions.RecordSet) []*RecordCollection {
 	recSlices := make([][]*RecordCollection, len(records)+1)
 	recSlices[0] = rc.Records()
 	for i, rec := range records {
-		recSlices[i+1] = rec.Collection().Records()
+		recSlices[i+1] = rec.Collection().(*RecordCollection).Records()
 	}
 	return cartesianProductSlices(recSlices...)
 }
 
 // Equals returns true if this RecordCollection is the same as other
 // i.e. they are of the same model and have the same ids
-func (rc *RecordCollection) Equals(other RecordSet) bool {
+func (rc *RecordCollection) Equals(other conditions.RecordSet) bool {
 	if rc.ModelName() != other.ModelName() {
 		return false
 	}
@@ -142,7 +143,7 @@ func (rc *RecordCollection) Equals(other RecordSet) bool {
 // Sorted returns a new RecordCollection sorted according to the given less function.
 //
 // The less function should return true if rs1 < rs2
-func (rc *RecordCollection) Sorted(less func(rs1 RecordSet, rs2 RecordSet) bool) *RecordCollection {
+func (rc *RecordCollection) Sorted(less func(rs1 conditions.RecordSet, rs2 conditions.RecordSet) bool) *RecordCollection {
 	if !rc.IsValid() {
 		return rc
 	}
@@ -154,18 +155,18 @@ func (rc *RecordCollection) Sorted(less func(rs1 RecordSet, rs2 RecordSet) bool)
 	for _, rec := range records {
 		ids = append(ids, rec.ids[0])
 	}
-	return newRecordCollection(rc.Env(), rc.ModelName()).WithIds(ids)
+	return newRecordCollection(rc.Env().(Environment), rc.ModelName()).WithIds(ids)
 }
 
 // SortedDefault returns a new record set with the same records as rc but sorted according
 // to the default order of this model
 func (rc *RecordCollection) SortedDefault() *RecordCollection {
-	return rc.Sorted(func(rs1 RecordSet, rs2 RecordSet) bool {
+	return rc.Sorted(func(rs1 conditions.RecordSet, rs2 conditions.RecordSet) bool {
 		for _, order := range lookupModel(rs1.ModelName()).defaultOrder {
-			if eq, _ := typesutils.AreEqual(rs1.Collection().Get(order.field), rs2.Collection().Get(order.field)); eq {
+			if eq, _ := typesutils.AreEqual(rs1.Collection().(*RecordCollection).Get(order.field), rs2.Collection().(*RecordCollection).Get(order.field)); eq {
 				continue
 			}
-			lt, _ := typesutils.IsLessThan(rs1.Collection().Get(order.field), rs2.Collection().Get(order.field))
+			lt, _ := typesutils.IsLessThan(rs1.Collection().(*RecordCollection).Get(order.field), rs2.Collection().(*RecordCollection).Get(order.field))
 			return (lt && !order.desc) || (!lt && order.desc)
 		}
 		return false
@@ -174,9 +175,9 @@ func (rc *RecordCollection) SortedDefault() *RecordCollection {
 
 // SortedByField returns a new record set with the same records as rc but sorted by the given field.
 // If reverse is true, the sort is done in reversed order
-func (rc *RecordCollection) SortedByField(name FieldName, reverse bool) *RecordCollection {
-	return rc.Sorted(func(rs1 RecordSet, rs2 RecordSet) bool {
-		lt, err := typesutils.IsLessThan(rs1.Collection().Get(name), rs2.Collection().Get(name))
+func (rc *RecordCollection) SortedByField(name conditions.FieldName, reverse bool) *RecordCollection {
+	return rc.Sorted(func(rs1 conditions.RecordSet, rs2 conditions.RecordSet) bool {
+		lt, err := typesutils.IsLessThan(rs1.Collection().(*RecordCollection).Get(name), rs2.Collection().(*RecordCollection).Get(name))
 		if err != nil {
 			log.Panic("Unable to sort recordset", "recordset", rc, "error", err)
 		}
@@ -193,11 +194,11 @@ func (rc *RecordCollection) SortedByField(name FieldName, reverse bool) *RecordC
 // Note that if this record set is not fully loaded, this function will call the database
 // to load the fields before doing the filtering. In this case, it might be more efficient
 // to search the database directly with the filter condition.
-func (rc *RecordCollection) Filtered(test func(rs RecordSet) bool) *RecordCollection {
+func (rc *RecordCollection) Filtered(test func(rs conditions.RecordSet) bool) *RecordCollection {
 	if !rc.IsValid() {
 		return rc
 	}
-	res := rc.Env().Pool(rc.ModelName())
+	res := rc.Env().(Environment).Pool(rc.ModelName())
 	for _, rec := range rc.Records() {
 		if !test(rec) {
 			continue

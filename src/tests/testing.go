@@ -109,7 +109,7 @@ func InitializeTests(moduleName string) {
 	}
 	keepDB := os.Getenv("HEXYA_KEEP_TEST_DB") != ""
 	var count int64
-	count = adapter.Connector().MustExec(fmt.Sprintf("SELECT TRUE FROM pg_database WHERE datname = '%s'", dbName))
+	count = adapter.Connector().MustExec(fmt.Sprintf("SELECT 1 FROM pg_database WHERE datname = '%s'", dbName))
 	if count <= 0 {
 		fmt.Printf("Error: %v=%v", "value", count)
 	}

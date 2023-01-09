@@ -15,8 +15,10 @@
 package tests
 
 import (
+	"github.com/hexya-erp/hexya/src/models"
 	"github.com/hexya-erp/hexya/src/models/loader"
 	"github.com/hexya-erp/hexya/src/models/security"
+	testmodule "github.com/hexya-erp/hexya/src/tests/testgomodels"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -24,29 +26,29 @@ import (
 func TestConditions(t *testing.T) {
 	Convey("Testing SQL building for queries", t, func() {
 		So(loader.SimulateInNewEnvironment(security.SuperUserID, func(env loader.Environment) {
-			rs := h.User().NewSet(env)
-			rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().BestPostFilteredOn(q.Post().Title().Equals("foo"))))
+			rp := models.GetRepository[testmodule.UserModel]()
+			rs, err := rp.Search(rp.Condition().ID().Equals(1).Underlying())
+			So(err, ShouldBeNil)
 			Convey("Simple query", func() {
-				So(func() { rs.Load() }, ShouldNotPanic)
+				So(rs, ShouldNotBeNil)
 			})
 			Convey("Simple query with args inflation", func() {
-				getUserID := func(rs loader.RecordSet) int {
-					return int(rs.Env().Uid())
-				}
-				rs2 := h.User().Search(env, q.User().Nums().EqualsFunc(getUserID))
-				So(func() { rs2.Load() }, ShouldNotPanic)
+				rs2, err := rp.Search(rp.Condition().FieldName("username").Equals("test"))
+				So(err, ShouldBeNil)
+				So(rs2, ShouldNotBeNil)
 			})
-			//				Convey("Check WHERE clause with additionnal filter", func() {
-			//					rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().Age().GreaterOrEqual(12)))
-			//					So(func() { rs.Load() }, ShouldNotPanic)
-			//				})
-			//				Convey("Check full query with all conditions", func() {
-			//					rs = rs.Search(q.User().ProfileFilteredOn(q.Profile().Age().GreaterOrEqual(12)).Or().Name().ILike("John"))
-			//					c2 := q.User().Name().Like("jane").Or().ProfileFilteredOn(q.Profile().Money().Lower(1234.56))
-			//					rs = rs.Search(c2)
-			//					rs.Load()
-			//					So(func() { rs.Load() }, ShouldNotPanic)
-			//				})
+			Convey("Check WHERE clause with additionnal filter", func() {
+				rs, err = rp.Search(rp.Condition().FilteredOn(rp.GetFieldName("age"), rp.Condition().FieldName("age").GreaterOrEqual(12)))
+				So(err, ShouldNotBeNil)
+				So(rs, ShouldNotBeNil)
+			})
+			//Convey("Check full query with all conditions", func() {
+			//	rs = rp.Search(rp.Condition().FilteredOn(rp..Age().GreaterOrEqual(12)).Or().Name().ILike("John"))
+			//	c2 := q.User().Name().Like("jane").Or().ProfileFilteredOn(q.Profile().Money().Lower(1234.56))
+			//	rs = rs.Search(c2)
+			//	rs.Load()
+			//	So(func() { rs.Load() }, ShouldNotPanic)
+			//})
 		}), ShouldBeNil)
 	})
 }

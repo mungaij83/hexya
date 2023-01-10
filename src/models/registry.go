@@ -89,6 +89,26 @@ func (mc *modelCollection) getRepo(t interface{}) Repository[any, int64] {
 	}
 	return rep
 }
+func (mc *modelCollection) migrate() {
+	err := loader.ExecuteInNewEnvironment(2222, func(environment loader.Environment) {
+		for _, r := range mc.registryByTableName {
+			err2 := r.migrateModels(environment)
+			if err2 != nil {
+				log.Warn("Failed to migrate model", "model", r.ModelName(), "error", err2)
+				_ = environment.Cr().Rollback()
+				panic(err2)
+			}
+		}
+		err := environment.Cr().Commit()
+		if err != nil {
+			log.Warn("Failed to commit migration", "error", err)
+			_ = environment.Cr().Rollback()
+		}
+	})
+	if err != nil {
+		panic(err)
+	}
+}
 
 // add the given Model to the modelCollection
 func (mc *modelCollection) add(mi Repository[any, int64]) error {

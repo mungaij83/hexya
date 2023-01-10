@@ -6,6 +6,10 @@ type UserRepository[T UserModel, K int64] struct {
 	models.ModelRepository[UserModel, int64]
 }
 
+type ProfileRepository[T ProfileModel, K int64] struct {
+	models.ModelRepository[ProfileModel, int64]
+}
+
 type CommentRepository[T CommentModel, K int64] struct {
 	models.ModelRepository[T, K]
 }

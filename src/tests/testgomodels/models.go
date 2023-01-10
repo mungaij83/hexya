@@ -34,21 +34,23 @@ const isPremiumString = isPremiumDescription
 
 type UserModel struct {
 	models.HexyaBaseModel
-	Name          string       `hexya:"String=Name;Help=The user's username;unique;NoCopy"`
-	DecoratedName string       `hexya:"display_name=Decorated Name"`
-	Email         string       `hexya:"help=The user's email address;size=100;index=true"`
-	Password      string       `hexya:"noCopy"`
-	Status        int          `json:"status_json" hexya:"goType=int16;default=12"`
-	IsStaff       bool         `hexya:"display_name=isStaffString;help=IsStaffHelp"`
-	IsActive      bool         `hexya:"display_name=Active User"`
-	Profile       ProfileModel `hexya:"one2one=id;onDelete=SetNull"`
+	Name          string `hexya:"String=Name;Help=The user's username;unique;NoCopy"`
+	DecoratedName string `hexya:"display_name=Decorated Name"`
+	Email         string `hexya:"help=The user's email address;size=100;index=true"`
+	Password      string `hexya:"noCopy"`
+	Status        int    `json:"status_json" hexya:"goType=int16;default=12"`
+	IsStaff       bool   `hexya:"display_name=isStaffString;help=IsStaffHelp"`
+	IsActive      bool   `hexya:"display_name=Active User"`
+	ProfileId     int64
+	Profile       ProfileModel `hexya:"one2one=id;onDelete=SetNull" gorm:"foreignKey:Id;references=ProfileId"`
 	Age           int          `hexya:"depends=Profile;Profile.Age;Stored=true;goType=int16"`
-	Posts         []PostModel  `hexya:"one2many=Id;ReverseFK=User;copy=true"`
+	Posts         []PostModel  `hexya:"one2many=Id;ReverseFK=User;copy=true;" gorm:"foreignKey:UserId"`
 	PMoney        float64      `hexya:"related:Profile.Money"`
-	Resume        ResumeModel  `hexya:"embed=true"`
-	LastPost      *PostModel   `hexya:"many2one=Id"`
-	Email2        string       `hexya:"help=Email user"`
-	IsPremium     bool         `hexya:"display_name=isPremiumString;help=isPremiumHelp"`
+	Resume        ResumeModel  `hexya:"embed=true" gorm:"embed"`
+	LastPostId    int64
+	LastPost      *PostModel `hexya:"many2one=Id" gorm:"foreignKey;references:LastPostId"`
+	Email2        string     `hexya:"help=Email user"`
+	IsPremium     bool       `hexya:"display_name=isPremiumString;help=isPremiumHelp"`
 	Nums          int
 	Size          float64
 	Education     string `hexya:"display_name=Educational Background"`
@@ -62,24 +64,28 @@ func (UserModel) ModelName() string {
 }
 
 type ProfileModel struct {
-	Age      int16
-	Gender   string `hexya:"type=selection;options=male:Male,female:Female"`
-	Money    float64
-	User     *UserModel `hexya:"ReverseFK=Profile"`
-	BestPost PostModel  `hexya:"many2one=Id"`
-	Country  string
-	UserName string `hexya:"related=User.Name"`
-	Action   string `hexya:"goType=actions.ActionRef"`
+	models.HexyaBaseModel
+	Age        int16
+	Gender     string `hexya:"type=selection;options=male:Male,female:Female"`
+	Money      float64
+	UserId     int64
+	User       *UserModel `hexya:"ReverseFK=Profile" gorm:"foreignKey;references=UserId"`
+	BestPostId int64
+	BestPost   PostModel `hexya:"many2one=Id" gorm:"foreignKey;references=BestPostId"`
+	Country    string
+	UserName   string `hexya:"related=User.Name"`
+	Action     string `hexya:"goType=actions.ActionRef"`
 }
 
 type PostModel struct {
 	models.HexyaBaseModel
-	User             *UserModel     `hexya:"many2one=Id"`
+	UserId           int64
+	User             *UserModel     `hexya:"many2one=Id" gorm:"foreignKey:UserId"`
 	Title            string         `hexya:"required"`
 	Content          string         `hexya:"type=html"`
 	Abstract         string         `hexya:"type=text"`
-	Tags             []TagModel     `hexya:"many2many=Id"`
-	Comments         []CommentModel `hexya:"many2many=Id;ReverseFK=Post"`
+	Tags             []TagModel     `hexya:"many2many=Id" gorm:"foreignKey:PostId"`
+	Comments         []CommentModel `hexya:"many2many=Id;ReverseFK=Post" gorm:"foreignKey:PostId"`
 	LastRead         time.Time      `hexya:"type=datetime"`
 	FirstCommentText string
 	FirstTagName     string `hexya:"related=Tags.Name"`
@@ -87,19 +93,23 @@ type PostModel struct {
 }
 type CommentModel struct {
 	models.HexyaBaseModel
-	Post        PostModel `hexya:"many2one=ID"`
+	PostId      int64
+	Post        PostModel `hexya:"many2one=ID" gorm:"foreignKey:PostId"`
 	WriterMoney float64   `hexya:"related=PostWriter.PMoney"`
 	Text        string
 }
 
 type TagModel struct {
 	models.HexyaBaseModel
-	Name        string
-	BestPost    PostModel   `hexya:"many2one=id"`
-	Posts       []PostModel `hexya:"many2many=id"`
-	Parent      *TagModel   `hexya:"many2one=id"`
-	Description string
-	Rate        float64
+	Name         string
+	BestPostId   int64
+	BestPost     PostModel `hexya:"many2one=id" gorm:"foreignKey:BestPostId"`
+	PostId       int64
+	Posts        []PostModel `hexya:"many2many=id;ReverseFK=PostId" gorm:"many2many:PostId"`
+	ParentPostId int64
+	Parent       *TagModel `hexya:"many2one=id" gorm:"foreignKey:ParentPostId"`
+	Description  string
+	Rate         float64
 }
 
 type ResumeModel struct {

@@ -31,6 +31,7 @@ type Repository[T any, K PrimaryKeys] interface {
 	TableName() string
 	ModelName() string
 	Delete(v interface{}) (interface{}, error)
+	migrateModels(env loader.Environment) error
 	validateAndInitialize(modelLoader *ModelLoader) error
 	setEnv(v *loader.Environment) error
 	FindById(id K) (interface{}, error)
@@ -113,16 +114,23 @@ func (mr ModelRepository[T, K]) connection() *gorm.DB {
 	}
 	return mr.env.Cr()
 }
+
+// migrateModels will migrate base models and its related extension models
+func (mr ModelRepository[T, K]) migrateModels(env loader.Environment) error {
+	// Migrate this model
+	err := env.Cr().AutoMigrate(*new(T))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 func (mr ModelRepository[T, K]) validateAndInitialize(modelLoader *ModelLoader) error {
 	mdl, err := modelLoader.LoadBaseModel(new(T))
 	if err != nil {
 		return err
 	}
-	// Migrate this model
-	err = mr.connection().AutoMigrate(*new(T))
-	if err != nil {
-		return err
-	}
+
 	mr.model = mdl
 	// Resolve model table name
 	mr.tableName = mr.connection().Unscoped().Model(new(T)).Name()

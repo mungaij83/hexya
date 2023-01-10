@@ -19,6 +19,8 @@ func BootStrap() {
 	loadManualSequencesFromDB()
 	Registry.Lock()
 	defer Registry.Unlock()
+	Registry.migrate() // Migrate all models
+	createModelLinks()
 	log.Info("Bootstrapping models security...")
 	setupSecurity()
 	log.Info("Register transient worker...")
@@ -94,5 +96,33 @@ func updateContextModelsSecurity() {
 			}
 		}
 		model.Methods().MustGet("Load").AllowGroup(security.GroupEveryone, baseModel.Methods().MustGet("Create"))
+	}
+}
+
+func createModelLinks() {
+	for _, mi := range Registry.registryByTableName {
+		mdl, ok := mi.GetModel()
+		if !ok {
+			log.Debug("Model not initialized", "table_name", mi.TableName())
+			continue
+		}
+		for _, fi := range mdl.Fields().NameRegistry() {
+			var (
+				relatedMI *loader.Model
+				ok        bool
+			)
+			if !fi.FieldType.IsRelationType() {
+				continue
+			}
+			relatedMI, ok = Registry.Get(fi.RelatedModelName)
+			if !ok {
+				log.Panic("Unknown related model in field declaration", "model", mdl.Name(), "field", fi.Name(), "relatedName", fi.RelatedModelName)
+			}
+			if fi.FieldType.IsReverseRelationType() {
+				fi.JsonReverseFK = relatedMI.Fields().MustGet(fi.ReverseFK).JSON()
+			}
+			fi.RelatedModel = relatedMI
+		}
+		mdl.Bootstrapped(true)
 	}
 }

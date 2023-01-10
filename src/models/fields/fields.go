@@ -362,19 +362,19 @@ type Many2Many struct {
 func (mf Many2Many) DeclareField(fc *loader.FieldsCollection, name string) *loader.Field {
 	fInfo := loader.CreateFieldFromStruct(fc, &mf, name, fieldtype.Many2Many, new([]int64))
 	our := mf.M2MOurField
-	if our == "" {
+	if our == "" && fc.Model() != nil {
 		our = fc.Model().Name()
 	}
 	their := mf.M2MTheirField
-	if their == "" {
-		their = mf.RelationModel.Underlying().Name()
+	if their == "" && fc.Model() != nil {
+		their = fc.Model().Name()
 	}
 	if our == their {
 		log.Panic("Many2many relation must have different 'M2MOurField' and 'M2MTheirField'",
-			"model", fc.Model().Name(), "field", name, "ours", our, "theirs", their)
+			"model", fc.Model(), "field", name, "ours", our, "theirs", their)
 	}
 
-	modelNames := []string{fc.Model().Name(), mf.RelationModel.Underlying().Name()}
+	modelNames := []string{fc.Model().Name(), mf.ModelName}
 	sort.Strings(modelNames)
 	m2mRelModName := mf.M2MLinkModelName
 	if m2mRelModName == "" {
@@ -386,7 +386,9 @@ func (mf Many2Many) DeclareField(fc *loader.FieldsCollection, name string) *load
 	if mf.Filter != nil {
 		fInfo.SetProperty("filter", mf.Filter.Underlying())
 	}
-	fInfo.SetProperty("relationModel", mf.RelationModel.Underlying())
+	if mf.RelationModel != nil {
+		fInfo.SetProperty("relationModel", mf.RelationModel.Underlying())
+	}
 	//fInfo.SetProperty("m2mRelModel", m2mRelModel)
 	//fInfo.SetProperty("m2mOurField", m2mOurField)
 	//fInfo.SetProperty("m2mTheirField", m2mTheirField)
@@ -443,7 +445,9 @@ func (mf Many2One) DeclareField(fc *loader.FieldsCollection, name string) *loade
 	if mf.Filter != nil {
 		fInfo.SetProperty("filter", mf.Filter.Underlying())
 	}
-	fInfo.SetProperty("relationModel", mf.RelationModel.Underlying())
+	if mf.RelationModel != nil {
+		fInfo.SetProperty("relationModel", mf.RelationModel.Underlying())
+	}
 	fInfo.SetProperty("onDelete", onDelete)
 	fInfo.SetProperty("noCopy", noCopy)
 	fInfo.SetProperty("required", required)
@@ -547,7 +551,9 @@ func (of One2One) DeclareField(fc *loader.FieldsCollection, name string) *loader
 	if of.Filter != nil {
 		fInfo.SetProperty("filter", of.Filter.Underlying())
 	}
-	fInfo.SetProperty("relationModel", of.RelationModel.Underlying())
+	if of.RelationModel != nil {
+		fInfo.SetProperty("relationModel", of.RelationModel.Underlying())
+	}
 	fInfo.SetProperty("onDelete", onDelete)
 	fInfo.SetProperty("noCopy", noCopy)
 	fInfo.SetProperty("required", required)

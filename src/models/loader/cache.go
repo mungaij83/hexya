@@ -70,7 +70,7 @@ func (c *cache) updateEntryByRef(mi *Model, id int64, jsonName string, value int
 	case fieldtype.One2Many:
 		ids := value.([]int64)
 		for _, relID := range ids {
-			c.updateEntry(fi.RelatedModel, relID, fi.jsonReverseFK, id, ctxSlug)
+			c.updateEntry(fi.RelatedModel, relID, fi.JsonReverseFK, id, ctxSlug)
 		}
 		if len(ids) == 1 {
 			// We have only one ID.
@@ -82,7 +82,7 @@ func (c *cache) updateEntryByRef(mi *Model, id int64, jsonName string, value int
 
 	case fieldtype.Rev2One:
 		relID := value.(int64)
-		c.updateEntry(fi.RelatedModel, relID, fi.jsonReverseFK, id, ctxSlug)
+		c.updateEntry(fi.RelatedModel, relID, fi.JsonReverseFK, id, ctxSlug)
 		c.setDataValue(mi.name, id, jsonName, true)
 
 	case fieldtype.Many2Many:
@@ -292,7 +292,7 @@ func (c *cache) get(mi *Model, id int64, fieldName string, ctxSlug string) inter
 		}
 		var relIds []int64
 		for cID, cVal := range c.data[fi.RelatedModelName] {
-			if cVal[fi.jsonReverseFK] != id {
+			if cVal[fi.JsonReverseFK] != id {
 				continue
 			}
 			relIds = append(relIds, cID)
@@ -303,7 +303,7 @@ func (c *cache) get(mi *Model, id int64, fieldName string, ctxSlug string) inter
 			return nil
 		}
 		for cID, cVal := range c.data[fi.RelatedModelName] {
-			if cVal[fi.jsonReverseFK] != id {
+			if cVal[fi.JsonReverseFK] != id {
 				continue
 			}
 			return cID

@@ -220,7 +220,7 @@ type Field struct {
 	RelatedModelName string
 	RelatedModel     *Model
 	ReverseFK        string
-	jsonReverseFK    string
+	JsonReverseFK    string
 	m2mRelModel      *Model
 	m2mOurField      *Field
 	m2mTheirField    *Field

@@ -103,10 +103,6 @@ func (ml ModelLoader) detectTableType(data interface{}) (string, tools.Option) {
 // Model  type is determined with priority as seen in the case statement
 // Implementing multiple types will result in other types being less prioritized as per the list below
 func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
-	fieldDefinitions, err := ml.LoadModel(data)
-	if err != nil {
-		return nil, err
-	}
 	modelName, option := ml.detectTableType(data)
 	var mdl *loader.Model
 	switch option {
@@ -127,6 +123,10 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 		return nil, errors.New("model failed to initialize")
 	}
 	// Add Fields and sorting order
+	fieldDefinitions, err := ml.LoadModel(data, mdl)
+	if err != nil {
+		return nil, err
+	}
 	mdl.AddFields(fieldDefinitions)
 	switch v := data.(type) {
 	case OrderedTableModel:
@@ -139,7 +139,7 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 	return mdl, nil
 }
 
-func (ml ModelLoader) LoadModel(data interface{}) (map[string]loader.FieldDefinition, error) {
+func (ml ModelLoader) LoadModel(data interface{}, mdl *loader.Model) (map[string]loader.FieldDefinition, error) {
 	modelFields := make(map[string]loader.FieldDefinition)
 	fieldTypes := reflect.TypeOf(data)
 	if fieldTypes.Kind() == reflect.Ptr {
@@ -291,8 +291,8 @@ func (ml ModelLoader) ParseRelatedFields(f reflect.StructField, fieldMap map[str
 			String:        data.Message,
 			Related:       data.Related,
 			ModelName:     tableName,
-			M2MTheirField: data.Many2One,
-			M2MOurField:   data.ReverseFK,
+			M2MTheirField: data.ReverseFK,
+			M2MOurField:   data.Many2Many,
 			Stored:        data.Stored,
 			ReadOnly:      data.Stored,
 			Index:         data.Index,

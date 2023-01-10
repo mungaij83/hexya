@@ -38,7 +38,11 @@ type sqlConstraint struct {
 
 // Name returns the name of this model
 func (m *Model) Name() string {
-	return m.name
+	log.Debug("Model Name() is:", "name", m)
+	if len(m.name) > 0 {
+		return m.name
+	}
+	return ""
 }
 
 func (m *Model) Options() tools.Option {
@@ -170,6 +174,9 @@ func (m *Model) convertValuesToFieldType(fMap *FieldMap, writeDB bool) {
 
 // AddFields adds the given fields to the model.
 func (m *Model) AddFields(fields map[string]FieldDefinition) {
+	if m.fields.Model() == nil {
+		m.fields.model = m
+	}
 	for name, field := range fields {
 		if field == nil {
 			log.Warn("models.Field is not defined", "model", m.name, "field", name)
@@ -179,6 +186,9 @@ func (m *Model) AddFields(fields map[string]FieldDefinition) {
 		newField := field.DeclareField(m.fields, name)
 		if _, exists := m.fields.Get(name); exists {
 			log.Panic("models.Field already exists", "model", m.name, "field", name)
+		}
+		if newField.model == nil {
+			newField.model = m
 		}
 		m.fields.add(newField)
 	}
@@ -338,7 +348,7 @@ func (m *Model) FieldsGet(fields ...conditions.FieldName) map[string]*FieldInfo 
 			Relation:      relation,
 			Selection:     fInfo.selection,
 			Domain:        filter,
-			ReverseFK:     fInfo.jsonReverseFK,
+			ReverseFK:     fInfo.JsonReverseFK,
 			OnChange:      fInfo.OnChange != "",
 			Translate:     translate,
 			InvisibleFunc: fInfo.invisibleFunc,
@@ -424,6 +434,10 @@ func (m *Model) Underlying() *Model {
 // overridden by the them when applicable.
 func (m *Model) InheritModel(mixInModel Modeler) {
 	m.mixins = append(m.mixins, mixInModel.Underlying())
+}
+
+func (m *Model) Bootstrapped(b bool) {
+	m.Bootstrapped(b)
 }
 
 // CreateModel creates a new Model with the given name and options.

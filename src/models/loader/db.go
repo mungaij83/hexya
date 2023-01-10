@@ -186,6 +186,12 @@ func NewDatabaseConnector(params *ConnectionParams) DatabaseConnector {
 func (db *DatabaseConnector) DBParams() ConnectionParams {
 	return db.connParams
 }
+func (db *DatabaseConnector) Trx() *gorm.DB {
+	if db.connParams.Debug {
+		return db.db.Debug().Begin()
+	}
+	return db.db.Begin()
+}
 
 func (db *DatabaseConnector) DB() *gorm.DB {
 	if db.connParams.Debug {

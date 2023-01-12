@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/hexya-erp/hexya/src/models/conditions"
-	"github.com/hexya-erp/hexya/src/models/fieldtype"
 	"github.com/hexya-erp/hexya/src/tools"
 	"github.com/hexya-erp/hexya/src/tools/strutils"
 	"github.com/hexya-erp/hexya/src/tools/typesutils"
@@ -454,19 +453,5 @@ func CreateModel(name string, options tools.Option) *Model {
 		sqlErrors:       make(map[string]string),
 		defaultOrderStr: []string{"ID"},
 	}
-	pk := &Field{
-		name:      "ID",
-		json:      "id",
-		model:     mi,
-		required:  true,
-		NoCopy:    true,
-		FieldType: fieldtype.Integer,
-		structField: reflect.TypeOf(
-			struct {
-				ID int64
-			}{},
-		).Field(0),
-	}
-	mi.fields.add(pk)
 	return mi
 }

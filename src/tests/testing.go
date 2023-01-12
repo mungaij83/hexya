@@ -48,10 +48,11 @@ func RunTests(m *testing.M, moduleName string, preHookFnct func()) {
 		}
 		os.Exit(res)
 	}()
+	server.RegisterModule(&server.Module{
+		Name:    moduleName,
+		PreInit: preHookFnct,
+	})
 	InitializeTests(moduleName)
-	if preHookFnct != nil {
-		preHookFnct()
-	}
 	res = m.Run()
 
 }
@@ -94,6 +95,7 @@ func InitializeTests(moduleName string) {
 		viper.Set("LogStdout", true)
 	}
 	logging.Initialize()
+
 	server.PreInit()
 	adapter = loader.DBConnect(loader.ConnectionParams{
 		Driver:     driver,
@@ -142,8 +144,8 @@ func TearDownTests(moduleName string) {
 	}
 	fmt.Printf("Tearing down database for module %s...", moduleName)
 	dbName := fmt.Sprintf("%s_%s_tests", prefix, moduleName)
-	adapter.DropDatabase(dbName)
-	fmt.Println("Ok")
+	//adapter.DropDatabase(dbName)
+	fmt.Println("Ok: " + dbName)
 	// Close connection
 	adapter.Connector().DBClose()
 }

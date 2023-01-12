@@ -123,7 +123,7 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 		return nil, errors.New("model failed to initialize")
 	}
 	// Add Fields and sorting order
-	fieldDefinitions, err := ml.LoadModel(data, mdl)
+	fieldDefinitions, err := ml.LoadModel(data)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +136,11 @@ func (ml ModelLoader) LoadBaseModel(data interface{}) (*loader.Model, error) {
 		}
 		break
 	}
+	log.Debug("Defined model", "table", mdl.TableName(), "model", modelName)
 	return mdl, nil
 }
 
-func (ml ModelLoader) LoadModel(data interface{}, mdl *loader.Model) (map[string]loader.FieldDefinition, error) {
+func (ml ModelLoader) LoadModel(data interface{}) (map[string]loader.FieldDefinition, error) {
 	modelFields := make(map[string]loader.FieldDefinition)
 	fieldTypes := reflect.TypeOf(data)
 	if fieldTypes.Kind() == reflect.Ptr {

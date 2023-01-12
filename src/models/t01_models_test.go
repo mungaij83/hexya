@@ -43,6 +43,7 @@ func TestModelDeclaration(t *testing.T) {
 		// Add to registry
 		err = Registry.add(pp)
 		So(err, ShouldBeNil)
+		Registry.migrate()
 		// Save after adding model to registry
 		err = pp.Save(&tt)
 		log.Debug("Failed to add profile", "error", err)

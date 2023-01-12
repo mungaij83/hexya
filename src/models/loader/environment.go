@@ -44,12 +44,16 @@ type Environment struct {
 	currentLayer   *methodLayer
 	previousMethod *Method
 	super          bool
+	testMode       bool
 	recursions     uint8
 	nextNegativeID int64
 }
 
 // Cr returns a pointer to the Cursor of the Environment
 func (env Environment) Cr() *gorm.DB {
+	if env.testMode {
+		return env.cr.tx.Debug()
+	}
 	return env.cr.tx
 }
 
@@ -132,10 +136,11 @@ func (env Environment) DumpCache() string {
 // the database connection.
 func newEnvironment(uid int64) Environment {
 	env := Environment{
-		cr:      newCursor(adapter.Connector().DB(), adapter),
-		uid:     uid,
-		context: types.NewContext(),
-		cache:   newCache(),
+		cr:       newCursor(adapter.Connector().DB(), adapter),
+		uid:      uid,
+		testMode: adapter.Connector().connParams.Debug,
+		context:  types.NewContext(),
+		cache:    newCache(),
 	}
 	return env
 }

@@ -42,13 +42,13 @@ type UserModel struct {
 	IsStaff       bool   `hexya:"display_name=isStaffString;help=IsStaffHelp"`
 	IsActive      bool   `hexya:"display_name=Active User"`
 	ProfileId     int64
-	Profile       ProfileModel `hexya:"one2one=id;onDelete=SetNull" gorm:"foreignKey:Id;references=ProfileId"`
-	Age           int          `hexya:"depends=Profile;Profile.Age;Stored=true;goType=int16"`
-	Posts         []PostModel  `hexya:"one2many=Id;ReverseFK=User;copy=true;" gorm:"foreignKey:UserId"`
-	PMoney        float64      `hexya:"related:Profile.Money"`
-	Resume        ResumeModel  `hexya:"embed=true" gorm:"embed"`
+	Profile       *ProfileModel `hexya:"one2one=id;onDelete=SetNull" gorm:"foreignKey:ProfileId"`
+	Age           int           `hexya:"depends=Profile;Profile.Age;Stored=true;goType=int16"`
+	Posts         []PostModel   `hexya:"one2many=Id;ReverseFK=User;copy=true;" gorm:"foreignKey:UserId"`
+	PMoney        float64       `hexya:"related:Profile.Money"`
+	Resume        ResumeModel   `hexya:"embed=true" gorm:"embedded"`
 	LastPostId    int64
-	LastPost      *PostModel `hexya:"many2one=Id" gorm:"foreignKey;references:LastPostId"`
+	LastPost      *PostModel `hexya:"many2one=Id" gorm:"foreignKey:LastPostId"`
 	Email2        string     `hexya:"help=Email user"`
 	IsPremium     bool       `hexya:"display_name=isPremiumString;help=isPremiumHelp"`
 	Nums          int
@@ -69,9 +69,9 @@ type ProfileModel struct {
 	Gender     string `hexya:"type=selection;options=male:Male,female:Female"`
 	Money      float64
 	UserId     int64
-	User       *UserModel `hexya:"ReverseFK=Profile" gorm:"foreignKey;references=UserId"`
+	User       *UserModel `hexya:"ReverseFK=Profile" gorm:"foreignKey:UserId"`
 	BestPostId int64
-	BestPost   PostModel `hexya:"many2one=Id" gorm:"foreignKey;references=BestPostId"`
+	BestPost   *PostModel `hexya:"many2one=Id" gorm:"foreignKey:BestPostId"`
 	Country    string
 	UserName   string `hexya:"related=User.Name"`
 	Action     string `hexya:"goType=actions.ActionRef"`

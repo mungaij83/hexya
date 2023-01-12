@@ -90,20 +90,40 @@ func (mc *modelCollection) getRepo(t interface{}) Repository[any, int64] {
 	return rep
 }
 func (mc *modelCollection) migrate() {
+	log.Debug("Migrate:", "Registry", "Table Name")
 	err := loader.ExecuteInNewEnvironment(2222, func(environment loader.Environment) {
+		tables := make([]interface{}, 0, len(mc.registryByTableName))
 		for _, r := range mc.registryByTableName {
-			err2 := r.migrateModels(environment)
+			tmpTable, err2 := r.migrateModels(environment)
+			log.Debug("Create table:", "tableName", r.TableName(), "modelName", r.ModelName())
 			if err2 != nil {
 				log.Warn("Failed to migrate model", "model", r.ModelName(), "error", err2)
 				_ = environment.Cr().Rollback()
 				panic(err2)
 			}
+			if tmpTable != nil {
+				tables = append(tables, tmpTable)
+			} else {
+				log.Debug("Create table Failed Nil:", "tableName", r.TableName(), "modelName", r.ModelName())
+			}
 		}
-		err := environment.Cr().Commit()
-		if err != nil {
-			log.Warn("Failed to commit migration", "error", err)
-			_ = environment.Cr().Rollback()
+		// Migrate all tables together to resolve cyclic dependency issue
+		if len(tables) > 0 {
+			err := environment.Cr().AutoMigrate(tables...)
+			if err != nil {
+				if err != nil {
+					log.Warn("Failed to commit migration", "error", err)
+					_ = environment.Cr().Rollback()
+				}
+			} else {
+				err = environment.Cr().Commit().Error
+				if err != nil {
+					log.Warn("Failed to commit migration", "error", err)
+					_ = environment.Cr().Rollback()
+				}
+			}
 		}
+		log.Debug("Migration completed for models", "count", len(mc.registryByTableName))
 	})
 	if err != nil {
 		panic(err)
@@ -118,6 +138,7 @@ func (mc *modelCollection) add(mi Repository[any, int64]) error {
 		log.Warn("Failed to initialize model repository", "Error", err)
 		return err
 	}
+	log.Debug("Model name for repository is", "name", mi.ModelName())
 	// Initialize table
 	if _, exists := mc.Get(mi.ModelName()); exists {
 		log.Warn("Trying to add already existing model", "model", mi.TableName())
@@ -147,7 +168,10 @@ func newModelCollection() *modelCollection {
 	}
 }
 
-func RegisterModel(repo Repository[any, int64]) Repository[any, int64] {
-	Registry.add(repo)
-	return repo
+func RegisterModel(repo Repository[any, int64]) (Repository[any, int64], error) {
+	err := Registry.add(repo)
+	if err != nil {
+		return nil, err
+	}
+	return repo, nil
 }

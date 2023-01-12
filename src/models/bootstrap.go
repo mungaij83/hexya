@@ -19,6 +19,7 @@ func BootStrap() {
 	loadManualSequencesFromDB()
 	Registry.Lock()
 	defer Registry.Unlock()
+	log.Info("Migrate models")
 	Registry.migrate() // Migrate all models
 	createModelLinks()
 	log.Info("Bootstrapping models security...")

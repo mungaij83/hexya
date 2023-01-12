@@ -160,7 +160,9 @@ func PreInit() {
 // PreInitModules calls successively all PreInit functions of all installed modules
 func PreInitModules() {
 	for _, module := range Modules {
+		log.Debug("Pre-Init for module", "module", module.Name)
 		if module.PreInit != nil {
+			log.Debug("Pre init for module", "module", module.Name)
 			module.PreInit()
 		}
 	}

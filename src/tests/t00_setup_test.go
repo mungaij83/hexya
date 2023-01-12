@@ -26,23 +26,23 @@ import (
 
 func TestMain(m *testing.M) {
 	RunTests(m, "tests", func() {
-		err := models.RegisterModel(testmodule.ProfileRepository[testmodule.ProfileModel, int64]{})
+		_, err := models.RegisterModel(&testmodule.UserRepository[testmodule.UserModel, int64]{})
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 		}
-		err = models.RegisterModel(testmodule.UserRepository[testmodule.UserModel, int64]{})
+		_, err = models.RegisterModel(&testmodule.ProfileRepository[testmodule.ProfileModel, int64]{})
 		if err != nil {
 			log.Printf("Error registering user: %v", err)
 		}
-		err = models.RegisterModel(testmodule.TagRepository[testmodule.TagModel, int64]{})
+		_, err = models.RegisterModel(&testmodule.TagRepository[testmodule.TagModel, int64]{})
 		if err != nil {
 			log.Printf("Error registering tags:%v", err)
 		}
-		err = models.RegisterModel(testmodule.PostRepository[testmodule.PostModel, int64]{})
+		_, err = models.RegisterModel(&testmodule.PostRepository[testmodule.PostModel, int64]{})
 		if err != nil {
 			log.Printf("Error registering posts: %v", err)
 		}
-		err = models.RegisterModel(testmodule.CommentRepository[testmodule.CommentModel, int64]{})
+		_, err = models.RegisterModel(&testmodule.CommentRepository[testmodule.CommentModel, int64]{})
 		if err != nil {
 			log.Printf("Error registering comments:%v", err)
 		}

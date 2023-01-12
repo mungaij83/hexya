@@ -247,7 +247,7 @@ func (db *DatabaseConnector) DBClose() {
 }
 
 func (db *DatabaseConnector) createDatabaseIfNotExist() bool {
-	count := db.MustExec(fmt.Sprintf("SELECT TRUE FROM pg_database WHERE datname = '%s'", db.connParams.DBName))
+	count := db.MustExec(fmt.Sprintf("SELECT count(*) FROM pg_database WHERE datname = '%s'", db.connParams.DBName))
 	if count <= 0 {
 		count = adapter.Connector().MustExec(fmt.Sprintf("CREATE DATABASE %s", db.connParams.DBName))
 	}

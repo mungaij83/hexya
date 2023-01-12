@@ -350,7 +350,7 @@ func (d *postgresAdapter) DropDatabase(name string) (ok bool) {
 		ok = false
 		return
 	}
-	c := d.Connector().MustExec(fmt.Sprintf("DROP DATABASE %s", name))
+	c := d.Connector().MustExec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", name))
 	ok = c > 0
 	return
 }

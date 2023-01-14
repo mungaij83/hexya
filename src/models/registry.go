@@ -171,6 +171,7 @@ func newModelCollection() *modelCollection {
 func RegisterModel(repo Repository[any, int64]) (Repository[any, int64], error) {
 	err := Registry.add(repo)
 	if err != nil {
+		log.Warn("failed to register model", "error", err)
 		return nil, err
 	}
 	return repo, nil

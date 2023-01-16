@@ -102,6 +102,7 @@ func (mc *modelCollection) migrate() {
 				panic(err2)
 			}
 			if tmpTable != nil {
+				log.Debug("Add table :", "tableName", r.TableName())
 				tables = append(tables, tmpTable)
 			} else {
 				log.Debug("Create table Failed Nil:", "tableName", r.TableName(), "modelName", r.ModelName())
@@ -138,14 +139,14 @@ func (mc *modelCollection) add(mi Repository[any, int64]) error {
 		log.Warn("Failed to initialize model repository", "Error", err)
 		return err
 	}
-	log.Debug("Model name for repository is", "name", mi.ModelName())
+	log.Debug("Model name for repository is", "name", mi.TableName())
 	// Initialize table
-	if _, exists := mc.Get(mi.ModelName()); exists {
-		log.Warn("Trying to add already existing model", "model", mi.TableName())
+	if _, exists := mc.Get(mi.TableName()); exists {
+		log.Warn("Trying to add already existing table", "model", mi.TableName())
 		return errors.New(fmt.Sprintf("trying to initialize an existing model: %v", mi.TableName()))
 	}
 	// Register model
-	mc.registryByTableName[mi.ModelName()] = mi
+	mc.registryByTableName[mi.TableName()] = mi
 	return nil
 }
 

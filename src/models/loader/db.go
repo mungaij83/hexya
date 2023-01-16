@@ -139,7 +139,7 @@ func (c *Cursor) Select(dest interface{}, query string, args ...interface{}) {
 // newCursor returns a new connector cursor on the given database
 func newCursor(db *gorm.DB, adapter DbAdapter) *Cursor {
 	return &Cursor{
-		tx:      db.Begin(&sql.TxOptions{Isolation: sql.LevelSerializable, ReadOnly: false}),
+		tx:      db.Begin(&sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: false}),
 		adapter: adapter,
 	}
 }
@@ -220,7 +220,9 @@ func (db *DatabaseConnector) MustExec(query string, args ...interface{}) int64 {
 func (db *DatabaseConnector) DBConnect(connStr string) error {
 	params := db.DBParams()
 	var err error
-	dbi, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
+	dbi, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true, // Need to be set for cyclic dependencies between models
+	})
 	if err != nil {
 		log.Panic("Could not connect to database,", "driver", params.Driver, "connStr", connStr, "err", err)
 		return err

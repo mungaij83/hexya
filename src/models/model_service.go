@@ -122,7 +122,7 @@ func (mr *ModelRepository[T, K]) connection() *gorm.DB {
 func (mr *ModelRepository[T, K]) migrateModels(env loader.Environment) (interface{}, error) {
 	// Migrate this model
 	v := new(T)
-	return *v, nil
+	return v, nil
 }
 func (mr *ModelRepository[T, K]) validateAndInitialize(modelLoader *ModelLoader) error {
 	mdl, err := modelLoader.LoadBaseModel(new(T))

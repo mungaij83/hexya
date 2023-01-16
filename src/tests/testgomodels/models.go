@@ -65,11 +65,11 @@ func (UserModel) ModelName() string {
 
 type ProfileModel struct {
 	models.HexyaBaseModel
-	Age        int16
-	Gender     string `hexya:"type=selection;options=male:Male,female:Female"`
-	Money      float64
-	UserId     int64
-	User       *UserModel `hexya:"ReverseFK=Profile" gorm:"foreignKey:UserId"`
+	Age    int16
+	Gender string `hexya:"type=selection;options=male:Male,female:Female"`
+	Money  float64
+	//UserId     int64
+	//User       *UserModel `hexya:"ReverseFK=Profile" gorm:"foreignKey:UserId"`
 	BestPostId int64
 	BestPost   *PostModel `hexya:"many2one=Id" gorm:"foreignKey:BestPostId"`
 	Country    string
